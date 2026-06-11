@@ -2,6 +2,7 @@ import database as db
 from argon2 import PasswordHasher
 import secrets
 import re
+import pyotp
 
 class Auth:
 
@@ -27,7 +28,13 @@ class Auth:
         salt_bytes = secrets.token_bytes(32)
         salt_hex = salt_bytes.hex()
 
-        return hash, salt_hex
+        # create otp secret and encrypt it
+        otp = pyotp.random_base32()
+        #
+        # TODO: encrypt
+        #
+
+        return hash, salt_hex, otp
 
     @staticmethod
     def verify_master_password(input_password):

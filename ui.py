@@ -5,6 +5,7 @@ import tkinter.messagebox as msg
 from auth import Auth
 from crypto import Crypto
 import generator
+from otp import OTP
 
 
 class Gui:
@@ -16,6 +17,7 @@ class Gui:
         self.tree = None
 
         self.crypto = Crypto()
+        self.OTP = OTP()
 
     def center_window(self, root, width, height):
         screen_width = root.winfo_screenwidth()
@@ -37,14 +39,46 @@ class Gui:
         txt_password = tk.Entry(self.root, show="*")
         txt_password.pack()
 
-        # nome confuso
+        def check_totp():
+            popup = tk.Toplevel()
+            popup.title("TOTP")
+            self.center_window(popup, 300, 250)
+
+            tk.Label(popup, text="TOTP").pack(pady=5)
+            totp_entry = tk.Entry(popup)
+            totp_entry.pack()
+            
+            totp = self.OTP.generate_totp()
+            # list to keep scope
+            result = [False]
+            def on_otp():
+                input_totp = totp_entry.get()
+                if self.OTP.verify_totp(input_totp):
+                    result[0] = True
+                    popup.destroy()
+                else:
+                    tk.messagebox.showerror("Error", "Invalid TOTP", parent=popup)
+                    totp_entry.delete(0, tk.END)
+                    totp_entry.focus_set()
+
+            # allow enter button
+            totp_entry.bind("<Return>", lambda e: on_otp())
+            tk.Button(popup, text="Check", command=on_otp).pack(pady=10)
+            popup.wait_window(popup)
+
+            return result[0]
+
+
+        # TODO: fix name
         def check_master_password():
             master_password = txt_password.get()
+            # check master password
             if Auth.verify_master_password(master_password):
-                password_bytes = master_password.encode("utf-8")
-                salt_bytes = bytes.fromhex(db.get_salt())
-                self.fernet = self.crypto.derive_key(password_bytes, salt_bytes)
-                self.page_passwords(self.root)
+                if check_totp():
+                    password_bytes = master_password.encode("utf-8")
+                    salt_bytes = bytes.fromhex(db.get_salt())
+                    self.fernet = self.crypto.derive_key(password_bytes, salt_bytes)
+                    self.page_passwords(self.root)
             else:
                 tk.messagebox.showerror("Error", "Wrong password")
 
@@ -72,8 +106,8 @@ class Gui:
                 
                 # check if result is tuple or error string
                 if isinstance(result, tuple):
-                    hash_masterpw, salt = result
-                    db.create_master_password(hash_masterpw, salt)
+                    hash_masterpw, salt, otp_secret = result
+                    db.create_master_password(hash_masterpw, salt, otp_secret)
                     msg.showinfo("Success", "Master password created.")
                     self.page_login()
                 else:
@@ -109,12 +143,16 @@ class Gui:
             password = password_entry.get()
             password_bytes = password.encode("utf-8")
             encrypted_password = self.crypto.encrypt(password_bytes)
+            
+            if service and username and password:
+                db.add_password(service, username, encrypted_password)
+                msg.showinfo("Success", "Password added")
+                popup.destroy()
+                self.load_data(self.tree)
+            else:
+                tk.messagebox.showerror("Error", "All fields required")
+                popup.focus_set()
 
-            db.add_password(service, username, encrypted_password)
-            msg.showinfo("Success", "Password added")
-
-            popup.destroy()
-            self.load_data(self.tree)
 
         def on_generate():
             password = generator.generate_password()
@@ -147,6 +185,12 @@ class Gui:
             text="Passwords",
             font=("Arial", 20, "bold"),
         ).pack()
+
+        # TODO: show qr code in a new window
+        # photo = self.OTP.generate_uri()
+        # label = tk.Label(self.root, image=photo)
+        # label.image = photo
+        # label.pack()
 
         btn_add = tk.Button(self.root, text="Add Password", command=self.add_password)
         btn_add.pack()

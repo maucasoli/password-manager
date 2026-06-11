@@ -13,7 +13,8 @@ def create_tables():
             "CREATE TABLE IF NOT EXISTS master ("
             "id INTEGER primary key,"
             "master_password TEXT NOT NULL,"
-            "salt TEXT NOT NULL"
+            "salt TEXT NOT NULL,"
+            "otp_secret TEXT NOT NULL"
             ")"
         )
         cur.execute(
@@ -38,11 +39,11 @@ def check_master_password():
             return False
 
 
-def create_master_password(password, salt):
+def create_master_password(password, salt, otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "INSERT INTO master (master_password, salt) VALUES (?, ?)", (password, salt)
+            "INSERT INTO master (master_password, salt, otp_secret) VALUES (?, ?, ?)", (password, salt, otp_secret)
         )
         con.commit()
 
@@ -91,3 +92,10 @@ def exist_master_user():
         except Exception as e:
             print(f"Error: {e}")
             return False
+
+def get_otp_secret():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT otp_secret FROM master")
+        otp_secret = cur.fetchone()[0]
+        return otp_secret
