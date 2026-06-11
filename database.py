@@ -90,5 +90,23 @@ def get_salt():
     con = connect()
     cur = con.cursor()
     cur.execute("SELECT salt FROM master")
+
     salt = cur.fetchone()[0]
+    con.close()
+
     return salt
+
+def exist_master_user():
+    con = connect()
+    cur = con.cursor()
+    cur.execute("SELECT * FROM master")
+
+    try:
+        row = cur.fetchone()
+        return row is not None
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+    finally:
+        con.close()
+

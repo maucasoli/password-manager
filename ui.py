@@ -4,6 +4,7 @@ import database as db
 import tkinter.messagebox as msg
 from auth import Auth
 from crypto import Crypto
+import generator
 
 
 class Gui:
@@ -50,39 +51,45 @@ class Gui:
         btn_login = tk.Button(self.root, text="Login", command=check_master_password)
         btn_login.pack()
 
-        btn_create_master = tk.Button(self.root, text="Create Master User", command=lambda: self.create_masterpw(self.root))
+        btn_create_master = tk.Button(self.root, text="Create Master User", command=lambda: self.create_master_password(self.root))
         btn_create_master.pack()
 
         self.root.mainloop()
 
-    def create_masterpw(self, root):
-        for widget in root.winfo_children():
-            widget.destroy()
+    def create_master_password(self, root):
+        if not db.exist_master_user():
+            for widget in root.winfo_children():
+                widget.destroy()
 
-        lbl_password = tk.Label(self.root, text="Choose a master password:").pack()
-        pw_entry = tk.Entry(self.root, show="*")
-        pw_entry.pack()
+            lbl_password = tk.Label(self.root, text="Choose a master password:").pack()
+            pw_entry = tk.Entry(self.root, show="*")
+            pw_entry.pack()
 
-        def on_ok():
-            masterpw = pw_entry.get()
-            # should return a tuple with hash and salt
-            result = Auth.create_master_password(masterpw)
-            
-            # check if result is tuple or error string
-            if isinstance(result, tuple):
-                hash_masterpw, salt = result
-                db.create_master_password(hash_masterpw, salt)
-                msg.showinfo("Success", "Master password created.")
-                self.page_login()
-            else:
-                msg.showwarning("Error", result)
+            def on_ok():
+                masterpw = pw_entry.get()
+                # should return a tuple with hash and salt
+                result = Auth.create_master_password(masterpw)
+                
+                # check if result is tuple or error string
+                if isinstance(result, tuple):
+                    hash_masterpw, salt = result
+                    db.create_master_password(hash_masterpw, salt)
+                    msg.showinfo("Success", "Master password created.")
+                    self.page_login()
+                else:
+                    msg.showwarning("Error", result)
 
-        tk.Button(root, text="Create", command=on_ok).pack(pady=10)
+            tk.Button(root, text="Create", command=on_ok).pack(pady=10)
+            tk.Button(root, text="Return", command=lambda: self.page_login()).pack(pady=10)
+        else:
+            msg.showwarning("Alert", "Master user exists")
+            self.page_login()
+
 
     def add_password(self):
         popup = tk.Toplevel()
         popup.title("Add Password")
-        self.center_window(popup, 300, 200)
+        self.center_window(popup, 300, 250)
 
         tk.Label(popup, text="Service").pack(pady=5)
         service_entry = tk.Entry(popup)
@@ -109,7 +116,15 @@ class Gui:
             popup.destroy()
             self.load_data(self.tree)
 
+        def on_generate():
+            password = generator.generate_password()
+            # delete from 0 to end
+            password_entry.delete(0, tk.END)
+            password_entry.insert(0, password)
+
         tk.Button(popup, text="OK", command=on_ok).pack(pady=10)
+        tk.Button(popup, text="Generate password", command=lambda: on_generate()).pack(pady=10)
+
 
     def load_data(self, tree):
         passwords = db.read_table()
