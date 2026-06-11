@@ -1,3 +1,5 @@
+main.spec
+
 # Python
 __pycache__/
 *.py[cod]

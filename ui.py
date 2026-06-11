@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import database as db
 import tkinter.messagebox as msg
-import auth
+from auth import Auth
 from crypto import Crypto
 
 
@@ -26,6 +26,9 @@ class Gui:
         root.geometry(f"{width}x{height}+{x}+{y}")
 
     def page_login(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
         self.center_window(self.root, self.width, self.height)
         self.root.title("Password Manager")
 
@@ -33,13 +36,10 @@ class Gui:
         txt_password = tk.Entry(self.root, show="*")
         txt_password.pack()
 
-        if not db.check_master_password():
-            self.create_masterpw()
-
         # nome confuso
         def check_master_password():
             master_password = txt_password.get()
-            if auth.verify_master_password(master_password):
+            if Auth.verify_master_password(master_password):
                 password_bytes = master_password.encode("utf-8")
                 salt_bytes = bytes.fromhex(db.get_salt())
                 self.fernet = self.crypto.derive_key(password_bytes, salt_bytes)
@@ -50,28 +50,34 @@ class Gui:
         btn_login = tk.Button(self.root, text="Login", command=check_master_password)
         btn_login.pack()
 
+        btn_create_master = tk.Button(self.root, text="Create Master User", command=lambda: self.create_masterpw(self.root))
+        btn_create_master.pack()
+
         self.root.mainloop()
 
-    def create_masterpw(self):
-        popup_masterpw = tk.Toplevel()
-        popup_masterpw.title("Create Master Password")
-        self.center_window(popup_masterpw, 300, 200)
+    def create_masterpw(self, root):
+        for widget in root.winfo_children():
+            widget.destroy()
 
-        tk.Label(popup_masterpw, text="Master Password").pack(pady=5)
-        pw_entry = tk.Entry(popup_masterpw)
+        lbl_password = tk.Label(self.root, text="Choose a master password:").pack()
+        pw_entry = tk.Entry(self.root, show="*")
         pw_entry.pack()
 
         def on_ok():
             masterpw = pw_entry.get()
-            hash_masterpw = auth.hash_password(masterpw)
-            salt_hex = auth.create_salt()
+            # should return a tuple with hash and salt
+            result = Auth.create_master_password(masterpw)
+            
+            # check if result is tuple or error string
+            if isinstance(result, tuple):
+                hash_masterpw, salt = result
+                db.create_master_password(hash_masterpw, salt)
+                msg.showinfo("Success", "Master password created.")
+                self.page_login()
+            else:
+                msg.showwarning("Error", result)
 
-            db.create_master_password(hash_masterpw, salt_hex)
-            msg.showinfo("Success", "Master password created")
-
-            popup_masterpw.destroy()
-
-        tk.Button(popup_masterpw, text="OK", command=on_ok).pack(pady=10)
+        tk.Button(root, text="Create", command=on_ok).pack(pady=10)
 
     def add_password(self):
         popup = tk.Toplevel()
@@ -87,7 +93,7 @@ class Gui:
         username_entry.pack()
 
         tk.Label(popup, text="Password").pack(pady=5)
-        password_entry = tk.Entry(popup)
+        password_entry = tk.Entry(popup, show="*")
         password_entry.pack()
 
         def on_ok():
