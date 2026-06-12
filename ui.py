@@ -17,6 +17,7 @@ class Gui:
         self.tree = None
 
         self.crypto = Crypto()
+        self.auth = Auth(self.crypto)
         self.OTP = OTP()
 
     def center_window(self, root, width, height):
@@ -30,7 +31,7 @@ class Gui:
 
     def show_qrcode(self, entry):
         master_password = entry.get()
-        if Auth.verify_master_password(master_password):
+        if self.auth.verify_master_password(master_password):
             popup = tk.Toplevel()
             popup.title("QR CODE")
             self.center_window(popup, 300, 250)
@@ -91,10 +92,13 @@ class Gui:
         def verify_master_password():
             master_password = txt_password.get()
             # check if master password is correct
-            if Auth.verify_master_password(master_password):
+            if self.auth.verify_master_password(master_password):
+
+                # derive key on login
                 password_bytes = master_password.encode("utf-8")
-                salt_bytes = bytes.fromhex(db.get_salt())
-                self.fernet = self.crypto.derive_key(password_bytes, salt_bytes)
+                salt_bytes = db.get_salt()
+                f = self.crypto.derive_key(password_bytes, salt_bytes)
+
                 if db.get_mfa():
                     if check_totp():
                         self.page_passwords(self.root)
@@ -132,15 +136,21 @@ class Gui:
 
             def on_ok():
                 masterpw = pw_entry.get()
+
+                # derive key on register
+                salt_bytes = self.auth.create_salt()
+                print(salt_bytes)
+                f = self.crypto.derive_key(masterpw.encode('utf-8'), salt_bytes)
+
                 # return a tuple with hash and salt
-                result = Auth.create_master_password(masterpw)
-
-
-                
+                result = self.auth.create_master_password(masterpw)
                 # check if result is tuple or error string
                 if isinstance(result, tuple):
-                    hash_masterpw, salt, otp_secret = result
-                    db.create_master_password(hash_masterpw, salt, otp_secret)
+                    hash_masterpw, encrypted_otp = result
+                    otp = self.crypto.decrypt(encrypted_otp).decode("utf-8")
+                    db.create_master_password(hash_masterpw, otp)
+                    db.set_salt(salt_bytes)
+
                     response = msg.askyesno(
                         "Success",
                         "Do you want to configure 2FA now?"

@@ -14,7 +14,7 @@ def create_tables():
             "id INTEGER primary key AUTOINCREMENT,"
             "password_hash TEXT NOT NULL,"
             "mfa_enabled INTEGER NOT NULL DEFAULT 0,"
-            "salt TEXT NOT NULL,"
+            "salt BLOB,"
             "otp_secret TEXT"
             ")"
         )
@@ -40,14 +40,20 @@ def check_master_password():
             return False
 
 
-def create_master_password(password, salt, otp_secret):
+def create_master_password(password, otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "INSERT INTO master (password_hash, salt, otp_secret) VALUES (?, ?, ?)",
-            (password, salt, otp_secret),
+            "INSERT INTO master (password_hash, otp_secret) VALUES (?, ?)",
+            (password, otp_secret),
         )
         con.commit()
+
+def set_salt(salt):
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("UPDATE master SET salt = (?)", (salt,))
+        con.commit()   
 
 
 def set_mfa():

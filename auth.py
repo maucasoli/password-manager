@@ -3,12 +3,16 @@ from argon2 import PasswordHasher
 import secrets
 import re
 import pyotp
+from crypto import Crypto
 
 class Auth:
 
+    def __init__(self, crypto):
+        self.crypto = crypto
+        self.ph = PasswordHasher()
 
-    @staticmethod
-    def create_master_password(password):
+    #@staticmethod
+    def create_master_password(self, password):
         if len(password) < 8:
             return "Password must be at least 8 characters long."
         if not re.search(r"[a-z]", password):
@@ -21,29 +25,30 @@ class Auth:
             return "Password must contain at least one special character."
         
         # hash master password
-        ph = PasswordHasher()
-        hash = ph.hash(password)
-
-        # create salt for argon
-        salt_bytes = secrets.token_bytes(32)
-        salt_hex = salt_bytes.hex()
+        #ph = PasswordHasher()
+        hash = self.ph.hash(password)
 
         # create otp secret and encrypt it
-        otp = pyotp.random_base32()
-        #
-        # TODO: encrypt
-        #
+        otp = pyotp.random_base32().encode('utf-8')
+        encrypted_otp = self.crypto.encrypt(otp)
 
-        return hash, salt_hex, otp
+        return hash, encrypted_otp
+    
+    def create_salt(self):
+        # create salt for argon
+        salt_bytes = secrets.token_bytes(32)
+        #salt_hex = salt_bytes.hex()
+        #return salt_hex
+        return salt_bytes
 
-    @staticmethod
-    def verify_master_password(input_password):
-        ph = PasswordHasher()
+    #@staticmethod
+    def verify_master_password(self, input_password):
+        #ph = PasswordHasher()
 
         masterpw = db.check_master_password()
 
         try:
-            if ph.verify(masterpw, input_password):
+            if self.ph.verify(masterpw, input_password):
                 return True
         except:
             return False
