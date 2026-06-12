@@ -18,7 +18,7 @@ class Auth:
         if not re.search(r"\d", password):
             return "Password must contain at least one number."
         if not re.search(r"[!@#$%&*()_?-]", password):
-            return "Password must contain at least one special character (@$!%*?&)."
+            return "Password must contain at least one special character."
         
         # hash master password
         ph = PasswordHasher()

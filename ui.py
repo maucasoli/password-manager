@@ -28,6 +28,24 @@ class Gui:
 
         root.geometry(f"{width}x{height}+{x}+{y}")
 
+    def show_qrcode(self, entry):
+        master_password = entry.get()
+        if Auth.verify_master_password(master_password):
+            popup = tk.Toplevel()
+            popup.title("QR CODE")
+            self.center_window(popup, 300, 250)
+
+            photo = self.OTP.generate_uri()
+            label = tk.Label(popup, image=photo)
+            label.image = photo
+            label.pack()
+
+            db.set_mfa()
+
+            popup.wait_window(popup)
+        else:
+            tk.messagebox.showerror("Error", "No 2FA or wrong password")
+
     def page_login(self):
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -70,25 +88,38 @@ class Gui:
 
 
         # TODO: fix name
-        def check_master_password():
+        def verify_master_password():
             master_password = txt_password.get()
-            # check master password
+            # check if master password is correct
             if Auth.verify_master_password(master_password):
-                if check_totp():
-                    password_bytes = master_password.encode("utf-8")
-                    salt_bytes = bytes.fromhex(db.get_salt())
-                    self.fernet = self.crypto.derive_key(password_bytes, salt_bytes)
+                password_bytes = master_password.encode("utf-8")
+                salt_bytes = bytes.fromhex(db.get_salt())
+                self.fernet = self.crypto.derive_key(password_bytes, salt_bytes)
+                if db.get_mfa():
+                    if check_totp():
+                        self.page_passwords(self.root)
+                else:
                     self.page_passwords(self.root)
+
             else:
                 tk.messagebox.showerror("Error", "Wrong password")
 
-        btn_login = tk.Button(self.root, text="Login", command=check_master_password)
+        def add_2FA():
+            # password entry box
+            self.show_qrcode(txt_password)
+
+        btn_login = tk.Button(self.root, text="Login", command=verify_master_password)
         btn_login.pack()
 
         btn_create_master = tk.Button(self.root, text="Create Master User", command=lambda: self.create_master_password(self.root))
         btn_create_master.pack()
 
+        btn_add_2FA = tk.Button(self.root, text="Add 2FA", command=lambda: add_2FA())
+        btn_add_2FA.pack()
+
         self.root.mainloop()
+
+
 
     def create_master_password(self, root):
         if not db.exist_master_user():
@@ -101,14 +132,22 @@ class Gui:
 
             def on_ok():
                 masterpw = pw_entry.get()
-                # should return a tuple with hash and salt
+                # return a tuple with hash and salt
                 result = Auth.create_master_password(masterpw)
+
+
                 
                 # check if result is tuple or error string
                 if isinstance(result, tuple):
                     hash_masterpw, salt, otp_secret = result
                     db.create_master_password(hash_masterpw, salt, otp_secret)
-                    msg.showinfo("Success", "Master password created.")
+                    response = msg.askyesno(
+                        "Success",
+                        "Do you want to configure 2FA now?"
+                    )
+                    if response:
+                        db.set_mfa()
+                        self.show_qrcode(pw_entry)  
                     self.page_login()
                 else:
                     msg.showwarning("Error", result)
@@ -185,12 +224,6 @@ class Gui:
             text="Passwords",
             font=("Arial", 20, "bold"),
         ).pack()
-
-        # TODO: show qr code in a new window
-        # photo = self.OTP.generate_uri()
-        # label = tk.Label(self.root, image=photo)
-        # label.image = photo
-        # label.pack()
 
         btn_add = tk.Button(self.root, text="Add Password", command=self.add_password)
         btn_add.pack()

@@ -11,10 +11,11 @@ def create_tables():
         cur = con.cursor()
         cur.execute(
             "CREATE TABLE IF NOT EXISTS master ("
-            "id INTEGER primary key,"
-            "master_password TEXT NOT NULL,"
+            "id INTEGER primary key AUTOINCREMENT,"
+            "password_hash TEXT NOT NULL,"
+            "mfa_enabled INTEGER NOT NULL DEFAULT 0,"
             "salt TEXT NOT NULL,"
-            "otp_secret TEXT NOT NULL"
+            "otp_secret TEXT"
             ")"
         )
         cur.execute(
@@ -31,7 +32,7 @@ def create_tables():
 def check_master_password():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT master_password FROM master")
+        cur.execute("SELECT password_hash FROM master")
         try:
             master_password = cur.fetchone()[0]
             return master_password
@@ -43,9 +44,29 @@ def create_master_password(password, salt, otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "INSERT INTO master (master_password, salt, otp_secret) VALUES (?, ?, ?)", (password, salt, otp_secret)
+            "INSERT INTO master (password_hash, salt, otp_secret) VALUES (?, ?, ?)",
+            (password, salt, otp_secret),
         )
         con.commit()
+
+
+def set_mfa():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("UPDATE master SET mfa_enabled = 1")
+        con.commit()
+
+# get MFA status
+def get_mfa():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT mfa_enabled FROM master")
+        row = cur.fetchone()
+
+        if row is None:
+            return False
+
+        return bool(row[0])
 
 
 def read_table():
@@ -92,6 +113,7 @@ def exist_master_user():
         except Exception as e:
             print(f"Error: {e}")
             return False
+
 
 def get_otp_secret():
     with connect() as con:
