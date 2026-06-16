@@ -55,11 +55,19 @@ def set_salt(salt):
         cur.execute("UPDATE master SET salt = (?)", (salt,))
         con.commit()   
 
-
+# enable MFA
 def set_mfa():
     with connect() as con:
         cur = con.cursor()
         cur.execute("UPDATE master SET mfa_enabled = 1")
+        con.commit()
+
+def disable_mfa():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("UPDATE master SET mfa_enabled = 0")
+        con.commit()
+        cur.execute("UPDATE master SET otp_secret = NULL")
         con.commit()
 
 # get MFA status
@@ -73,6 +81,12 @@ def get_mfa():
             return False
 
         return bool(row[0])
+    
+def set_otp_secret(otp_secret):
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("UPDATE master SET otp_secret = (?)", (otp_secret,))
+        con.commit()    
 
 
 def read_table():

@@ -10,7 +10,6 @@ class Auth:
         self.crypto = crypto
         self.ph = PasswordHasher()
 
-    #@staticmethod
     def create_master_password(self, password):
         if len(password) < 8:
             return "Password must be at least 8 characters long."
@@ -26,11 +25,17 @@ class Auth:
         # hash master password
         hash = self.ph.hash(password)
 
-        # create otp secret and encrypt it
-        otp = pyotp.random_base32().encode('utf-8')
-        encrypted_otp = self.crypto.encrypt(otp)
+        # get otp_secret
+        encrypted_otp = self.create_otp_secret()
 
         return hash, encrypted_otp
+    
+    def create_otp_secret(self):
+        # create otp secret and encrypt it
+        otp_secret = pyotp.random_base32().encode('utf-8')
+        encrypted_otp = self.crypto.encrypt(otp_secret)
+
+        return encrypted_otp
     
     def create_salt(self):
         # create salt for argon
@@ -38,7 +43,6 @@ class Auth:
 
         return salt_bytes
 
-    #@staticmethod
     def verify_master_password(self, input_password):
         masterpw = db.check_master_password()
 

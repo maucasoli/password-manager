@@ -8,20 +8,23 @@ import qrcode
 
 class OTP:
 
-    def __init__(self):
+    def __init__(self, crypto):
+        self.crypto = crypto
         self.totp = None
+        self.secret = None
 
     def generate_totp(self):
-        secret = db.get_otp_secret()
-        self.totp = pyotp.TOTP(secret)
-        print("TOTP 30s:", self.totp.now())
+        self.secret = db.get_otp_secret()
+        secret_decrypted = self.crypto.decrypt(self.secret)
+        self.totp = pyotp.TOTP(secret_decrypted)
+        print("TOTP:", self.totp.now())
         return self.totp.now()
 
     def generate_uri(self):
-        secret = db.get_otp_secret()
+        #secret = db.get_otp_secret()
         buffer = BytesIO()
 
-        uri = pyotp.TOTP(secret).provisioning_uri(
+        uri = pyotp.TOTP(self.secret).provisioning_uri(
             name="admin",
             issuer_name="Password Manager"
         )

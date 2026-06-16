@@ -18,7 +18,7 @@ class Gui:
 
         self.crypto = Crypto()
         self.auth = Auth(self.crypto)
-        self.OTP = OTP()
+        self.OTP = OTP(self.crypto)
 
     def center_window(self, root, width, height):
         screen_width = root.winfo_screenwidth()
@@ -83,8 +83,6 @@ class Gui:
 
             return result[0]
 
-
-        # TODO: fix name
         def verify_master_password():
             master_password = txt_password.get()
             # check if master password is correct
@@ -112,6 +110,8 @@ class Gui:
                     "Do you want to configure 2FA now?"
                 )
                 if response:
+                    encrypted_otp = self.auth.create_otp_secret()
+                    db.set_otp_secret(encrypted_otp)
                     self.show_qrcode()
             else:
                 tk.messagebox.showerror("Error", "No 2FA or wrong password")
@@ -151,8 +151,8 @@ class Gui:
                 # check if result is tuple or error string
                 if isinstance(result, tuple):
                     hash_masterpw, encrypted_otp = result
-                    otp = self.crypto.decrypt(encrypted_otp).decode("utf-8")
-                    db.create_master_password(hash_masterpw, otp)
+                    #otp = self.crypto.decrypt(encrypted_otp).decode("utf-8")
+                    db.create_master_password(hash_masterpw, encrypted_otp)
                     db.set_salt(salt_bytes)
 
                     response = msg.askyesno(
@@ -161,7 +161,7 @@ class Gui:
                     )
                     if response:
                         db.set_mfa()
-                        self.show_qrcode(pw_entry)  
+                        self.show_qrcode() 
                     self.page_login()
                 else:
                     msg.showwarning("Error", result)
@@ -241,6 +241,29 @@ class Gui:
 
         btn_add = tk.Button(self.root, text="Add Password", command=self.add_password)
         btn_add.pack()
+
+        def on_logout():
+            for widget in root.winfo_children():
+                widget.destroy()
+            self.page_login()
+
+        btn_logout = tk.Button(self.root, text="Exit", command=lambda: on_logout())
+        btn_logout.pack()
+
+        def on_remove_2fa():
+            if db.get_mfa():
+                response = msg.askyesno(
+                    "Success",
+                    "Do you want to remove 2FA?"
+                )
+                if response:
+                    db.disable_mfa()
+                    msg.showinfo("2FA status", "2FA has been disabled")
+            else:
+                tk.messagebox.showerror("Error", "2FA already disabled", parent=root)
+
+        btn_remove_2fa = tk.Button(self.root, text="Remove 2FA", command=lambda: on_remove_2fa())
+        btn_remove_2fa.pack()
 
         self.tree = ttk.Treeview(
             self.root,
