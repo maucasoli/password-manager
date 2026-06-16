@@ -29,9 +29,7 @@ class Gui:
 
         root.geometry(f"{width}x{height}+{x}+{y}")
 
-    def show_qrcode(self, entry):
-        master_password = entry.get()
-        if self.auth.verify_master_password(master_password):
+    def show_qrcode(self):
             popup = tk.Toplevel()
             popup.title("QR CODE")
             self.center_window(popup, 300, 250)
@@ -44,9 +42,7 @@ class Gui:
             db.set_mfa()
 
             popup.wait_window(popup)
-        else:
-            tk.messagebox.showerror("Error", "No 2FA or wrong password")
-
+       
     def page_login(self):
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -108,9 +104,17 @@ class Gui:
             else:
                 tk.messagebox.showerror("Error", "Wrong password")
 
-        def add_2FA():
-            # password entry box
-            self.show_qrcode(txt_password)
+        def add_2FA(entry):
+            master_password = entry.get()
+            if self.auth.verify_master_password(master_password):
+                response = msg.askyesno(
+                    "Success",
+                    "Do you want to configure 2FA now?"
+                )
+                if response:
+                    self.show_qrcode()
+            else:
+                tk.messagebox.showerror("Error", "No 2FA or wrong password")
 
         btn_login = tk.Button(self.root, text="Login", command=verify_master_password)
         btn_login.pack()
@@ -118,7 +122,8 @@ class Gui:
         btn_create_master = tk.Button(self.root, text="Create Master User", command=lambda: self.create_master_password(self.root))
         btn_create_master.pack()
 
-        btn_add_2FA = tk.Button(self.root, text="Add 2FA", command=lambda: add_2FA())
+        # pass master password entry box
+        btn_add_2FA = tk.Button(self.root, text="Add 2FA", command=lambda: add_2FA(txt_password))
         btn_add_2FA.pack()
 
         self.root.mainloop()
@@ -139,7 +144,6 @@ class Gui:
 
                 # derive key on register
                 salt_bytes = self.auth.create_salt()
-                print(salt_bytes)
                 f = self.crypto.derive_key(masterpw.encode('utf-8'), salt_bytes)
 
                 # return a tuple with hash and salt

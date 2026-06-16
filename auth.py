@@ -3,7 +3,6 @@ from argon2 import PasswordHasher
 import secrets
 import re
 import pyotp
-from crypto import Crypto
 
 class Auth:
 
@@ -25,7 +24,6 @@ class Auth:
             return "Password must contain at least one special character."
         
         # hash master password
-        #ph = PasswordHasher()
         hash = self.ph.hash(password)
 
         # create otp secret and encrypt it
@@ -37,14 +35,11 @@ class Auth:
     def create_salt(self):
         # create salt for argon
         salt_bytes = secrets.token_bytes(32)
-        #salt_hex = salt_bytes.hex()
-        #return salt_hex
+
         return salt_bytes
 
     #@staticmethod
     def verify_master_password(self, input_password):
-        #ph = PasswordHasher()
-
         masterpw = db.check_master_password()
 
         try:
