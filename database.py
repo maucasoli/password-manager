@@ -49,11 +49,13 @@ def create_master_password(password, otp_secret):
         )
         con.commit()
 
+
 def set_salt(salt):
     with connect() as con:
         cur = con.cursor()
         cur.execute("UPDATE master SET salt = (?)", (salt,))
-        con.commit()   
+        con.commit()
+
 
 # enable MFA
 def set_mfa():
@@ -62,6 +64,7 @@ def set_mfa():
         cur.execute("UPDATE master SET mfa_enabled = 1")
         con.commit()
 
+
 def disable_mfa():
     with connect() as con:
         cur = con.cursor()
@@ -69,6 +72,7 @@ def disable_mfa():
         con.commit()
         cur.execute("UPDATE master SET otp_secret = NULL")
         con.commit()
+
 
 # get MFA status
 def get_mfa():
@@ -81,12 +85,13 @@ def get_mfa():
             return False
 
         return bool(row[0])
-    
+
+
 def set_otp_secret(otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute("UPDATE master SET otp_secret = (?)", (otp_secret,))
-        con.commit()    
+        con.commit()
 
 
 def read_table():
@@ -111,6 +116,16 @@ def add_password(service, username, password):
         cur.execute(
             "INSERT INTO passwords (service, username, password) VALUES (?, ?, ?)",
             (service, username, password),
+        )
+        con.commit()
+
+
+def delete_password(id):
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute(
+            "DELETE FROM passwords WHERE id = (?)",
+            (id),
         )
         con.commit()
 

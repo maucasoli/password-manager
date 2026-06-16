@@ -287,7 +287,7 @@ class Gui:
             self.clear_memory()
             self.page_login()
 
-        btn_logout = tk.Button(self.root, text="Exit", command=lambda: on_logout())
+        btn_logout = tk.Button(self.root, text="Logout", command=lambda: on_logout())
         btn_logout.pack()
 
         def on_remove_2fa():
@@ -336,3 +336,41 @@ class Gui:
         # double click to show
         # todo: change to copy (30s)
         self.tree.bind("<Double-1>", show_password)
+
+        # TODO: edit option
+        def popup_menu(event):
+            item = self.tree.identify_row(event.y)
+
+            if not item:
+                return
+            
+            # highlight chosen line
+            self.tree.selection_set(item)
+
+            menu = tk.Menu(self.root, tearoff=0)
+
+            menu.add_command(
+                label="Delete",
+                command = lambda: delete_password(item)
+            )
+
+            # show menu at mouse location
+            menu.tk_popup(event.x_root, event.y_root)
+
+        # when right-click > popup_menu
+        self.tree.bind("<Button-3>", popup_menu)
+
+        def delete_password(item):
+            # get all columns
+            values = self.tree.item(item, "values")
+
+            item_id = values[0]
+
+            response = msg.askyesno(
+                "Delete",
+                "Are you sure?"
+            )
+
+            if response:
+                db.delete_password(item_id)
+                self.tree.delete(item)
