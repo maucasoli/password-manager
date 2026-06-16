@@ -6,6 +6,7 @@ from auth import Auth
 from crypto import Crypto
 import generator
 from otp import OTP
+import time
 
 
 class Gui:
@@ -16,9 +17,40 @@ class Gui:
         self.height = 300
         self.tree = None
 
+        self.last_activity = time.time()
+        self.locked = False
+
+        self.root.bind_all("<Key>", self.update_activity)
+        self.root.bind_all("<Button>", self.update_activity)
+        self.root.bind_all("<Motion>", self.update_activity)
+        self.root.bind_all("<MouseWheel>", self.update_activity)
+
         self.crypto = Crypto()
         self.auth = Auth(self.crypto)
         self.OTP = OTP(self.crypto)
+
+    def clear_memory(self):
+        self.tree = None
+        self.crypto.clear()
+        self.OTP.clear()
+
+    def update_activity(self, event=None):
+        self.last_activity = time.time()
+
+    def check_lock(self):
+        if not self.locked:
+            idle_time = time.time() - self.last_activity
+
+            # seconds
+            if idle_time >= 60:
+                for widget in self.root.winfo_children():
+                    widget.destroy()
+                self.clear_memory()
+                self.locked = True
+                msg.showwarning("Alert", "You've been logged out")
+                self.page_login()
+
+        self.root.after(1000, self.check_lock)
 
     def center_window(self, root, width, height):
         screen_width = root.winfo_screenwidth()
@@ -91,7 +123,7 @@ class Gui:
                 # derive key on login
                 password_bytes = master_password.encode("utf-8")
                 salt_bytes = db.get_salt()
-                f = self.crypto.derive_key(password_bytes, salt_bytes)
+                self.crypto.derive_key(password_bytes, salt_bytes)
 
                 if db.get_mfa():
                     if check_totp():
@@ -102,14 +134,17 @@ class Gui:
             else:
                 tk.messagebox.showerror("Error", "Wrong password")
 
-        def add_2FA(entry):
-            master_password = entry.get()
+        def add_2FA():
+            master_password = txt_password.get()
             if self.auth.verify_master_password(master_password):
                 response = msg.askyesno(
                     "Success",
                     "Do you want to configure 2FA now?"
                 )
                 if response:
+                    password_bytes = master_password.encode("utf-8")
+                    salt_bytes = db.get_salt()
+                    self.crypto.derive_key(password_bytes, salt_bytes)
                     encrypted_otp = self.auth.create_otp_secret()
                     db.set_otp_secret(encrypted_otp)
                     self.show_qrcode()
@@ -123,7 +158,7 @@ class Gui:
         btn_create_master.pack()
 
         # pass master password entry box
-        btn_add_2FA = tk.Button(self.root, text="Add 2FA", command=lambda: add_2FA(txt_password))
+        btn_add_2FA = tk.Button(self.root, text="Add 2FA", command=lambda: add_2FA())
         btn_add_2FA.pack()
 
         self.root.mainloop()
@@ -144,7 +179,7 @@ class Gui:
 
                 # derive key on register
                 salt_bytes = self.auth.create_salt()
-                f = self.crypto.derive_key(masterpw.encode('utf-8'), salt_bytes)
+                self.crypto.derive_key(masterpw.encode('utf-8'), salt_bytes)
 
                 # return a tuple with hash and salt
                 result = self.auth.create_master_password(masterpw)
@@ -233,6 +268,10 @@ class Gui:
         for widget in root.winfo_children():
             widget.destroy()
 
+        # start idle timer after login
+        self.locked = False
+        self.check_lock()
+
         lbl_title = tk.Label(
             self.root,
             text="Passwords",
@@ -245,6 +284,7 @@ class Gui:
         def on_logout():
             for widget in root.winfo_children():
                 widget.destroy()
+            self.clear_memory()
             self.page_login()
 
         btn_logout = tk.Button(self.root, text="Exit", command=lambda: on_logout())

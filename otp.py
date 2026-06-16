@@ -13,6 +13,11 @@ class OTP:
         self.totp = None
         self.secret = None
 
+    def clear(self):
+        self.totp = None
+        self.secret = None
+        
+
     def generate_totp(self):
         self.secret = db.get_otp_secret()
         secret_decrypted = self.crypto.decrypt(self.secret)
@@ -21,7 +26,6 @@ class OTP:
         return self.totp.now()
 
     def generate_uri(self):
-        #secret = db.get_otp_secret()
         buffer = BytesIO()
 
         uri = pyotp.TOTP(self.secret).provisioning_uri(

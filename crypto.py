@@ -10,6 +10,10 @@ class Crypto:
     def __init__(self):
         self.fernet = None
 
+    def clear(self):
+        if self.fernet:
+            self.fernet = None
+
     # from master password
     def derive_key(self, password_bytes, salt_bytes):
         kdf = Argon2id(
@@ -17,7 +21,6 @@ class Crypto:
         )
         key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
         self.fernet = Fernet(key)
-        return self.fernet
 
     def encrypt(self, password_bytes):
         if self.fernet is None:
