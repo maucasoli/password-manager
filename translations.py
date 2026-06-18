@@ -8,9 +8,11 @@ TRANSLATIONS = {
         # labels
         "LABEL_MASTER_PASSWORD": "Master password:",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choose a master password:",
+        "LABEL_REENTER_MASTER_PASSWORD": "Re-enter master password:",
         "LABEL_SERVICE": "Service",
         "LABEL_USERNAME": "Username",
         "LABEL_PASSWORD": "Password",
+        "LABEL_REENTER_PASSWORD": "Re-enter password:",
         "LABEL_PASSWORDS": "Passwords",
         # buttons
         "BTN_LOGIN": "Login",
@@ -35,6 +37,7 @@ TRANSLATIONS = {
         "MSG_WRONG_PASSWORD": "Incorrect password",
         "MSG_INVALID_TOTP": "Invalid TOTP code",
         "MSG_CONFIGURE_2FA": "Do you want to configure 2FA now?",
+        "MSG_DIFFERENT_PASSWORD": "Passwords do not match",
         "MSG_NO_2FA_OR_WRONG_PASSWORD": "No 2FA enabled or wrong password",
         "MSG_MASTER_USER_EXISTS": "Master user already exists",
         "MSG_PASSWORD_ADDED": "Password added successfully",
@@ -59,9 +62,11 @@ TRANSLATIONS = {
         # labels
         "LABEL_MASTER_PASSWORD": "Mot de passe principal :",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choisissez un mot de passe principal :",
+        "LABEL_REENTER_MASTER_PASSWORD": "Saisissez de nouveau le mot de passe principal :",        
         "LABEL_SERVICE": "Service",
         "LABEL_USERNAME": "Nom d'utilisateur",
         "LABEL_PASSWORD": "Mot de passe",
+        "LABEL_REENTER_PASSWORD": "Saisissez de nouveau le mot de passe",
         "LABEL_PASSWORDS": "Mots de passe",
         # buttons
         "BTN_LOGIN": "Connexion",
@@ -86,6 +91,7 @@ TRANSLATIONS = {
         "MSG_WRONG_PASSWORD": "Mot de passe incorrect",
         "MSG_INVALID_TOTP": "Code TOTP invalide",
         "MSG_CONFIGURE_2FA": "Voulez-vous configurer la 2FA maintenant ?",
+        "MSG_DIFFERENT_PASSWORD": "Les mots de passe ne correspondent pas",
         "MSG_NO_2FA_OR_WRONG_PASSWORD": "Aucune 2FA activée ou mot de passe incorrect",
         "MSG_MASTER_USER_EXISTS": "L'utilisateur principal existe déjà",
         "MSG_PASSWORD_ADDED": "Mot de passe ajouté avec succès",

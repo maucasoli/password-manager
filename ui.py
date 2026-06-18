@@ -201,29 +201,41 @@ class Gui:
             pw_entry = tk.Entry(self.root, show="*")
             pw_entry.pack()
 
+            lbl_password2 = tk.Label(
+                self.root, text=t("LABEL_REENTER_MASTER_PASSWORD")
+            ).pack()
+            pw_entry2 = tk.Entry(self.root, show="*")
+            pw_entry2.pack()
+
             def on_ok():
                 masterpw = pw_entry.get()
+                masterpw2 = pw_entry2.get()
 
-                # derive key on register
-                salt_bytes = self.auth.create_salt()
-                self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
+                if masterpw == masterpw2:
+                    # derive key on register
+                    salt_bytes = self.auth.create_salt()
+                    self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
 
-                # return a tuple with hash and salt
-                result = self.auth.create_master_password(masterpw)
-                # check if result is tuple or error string
-                if isinstance(result, tuple):
-                    hash_masterpw, encrypted_otp = result
-                    # otp = self.crypto.decrypt(encrypted_otp).decode("utf-8")
-                    db.create_master_password(hash_masterpw, encrypted_otp)
-                    db.set_salt(salt_bytes)
+                    # return a tuple with hash and salt
+                    result = self.auth.create_master_password(masterpw)
+                    # check if result is tuple or error string
+                    if isinstance(result, tuple):
+                        hash_masterpw, encrypted_otp = result
+                        # otp = self.crypto.decrypt(encrypted_otp).decode("utf-8")
+                        db.create_master_password(hash_masterpw, encrypted_otp)
+                        db.set_salt(salt_bytes)
 
-                    response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
-                    if response:
-                        db.set_mfa()
-                        self.show_qrcode()
-                    self.page_login()
+                        response = msg.askyesno(
+                            t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA")
+                        )
+                        if response:
+                            db.set_mfa()
+                            self.show_qrcode()
+                        self.page_login()
+                    else:
+                        msg.showwarning(t("DIALOG_ERROR"), result)
                 else:
-                    msg.showwarning(t("DIALOG_ERROR"), result)
+                    msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
 
             tk.Button(root, text=t("BTN_CREATE"), command=on_ok).pack(pady=10)
             tk.Button(root, text=t("BTN_BACK"), command=lambda: self.page_login()).pack(
@@ -236,7 +248,7 @@ class Gui:
     def add_password(self):
         popup = tk.Toplevel()
         popup.title(t("TITLE_ADD_PASSWORD"))
-        self.center_window(popup, 300, 250)
+        self.center_window(popup, 300, 300)
 
         tk.Label(popup, text=t("LABEL_SERVICE")).pack(pady=5)
         service_entry = tk.Entry(popup)
@@ -250,27 +262,41 @@ class Gui:
         password_entry = tk.Entry(popup, show="*")
         password_entry.pack()
 
+        tk.Label(popup, text=t("LABEL_REENTER_PASSWORD")).pack(pady=5)
+        password_entry2 = tk.Entry(popup, show="*")
+        password_entry2.pack()
+
         def on_ok():
             service = service_entry.get()
             username = username_entry.get()
             password = password_entry.get()
-            password_bytes = password.encode("utf-8")
-            encrypted_password = self.crypto.encrypt(password_bytes)
+            password2 = password_entry2.get()
 
-            if service and username and password:
-                db.add_password(service, username, encrypted_password)
-                msg.showinfo(t("DIALOG_SUCCESS"), t("MSG_PASSWORD_ADDED"))
-                popup.destroy()
-                self.load_data(self.tree)
+            if password == password2:
+                password_bytes = password.encode("utf-8")
+                encrypted_password = self.crypto.encrypt(password_bytes)
+
+                if service and username and password:
+                    db.add_password(service, username, encrypted_password)
+                    msg.showinfo(t("DIALOG_SUCCESS"), t("MSG_PASSWORD_ADDED"))
+                    popup.destroy()
+                    self.load_data(self.tree)
+                else:
+                    tk.messagebox.showerror(
+                        t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED")
+                    )
+                    popup.focus_set()
             else:
-                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED"))
-                popup.focus_set()
+                msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
+                self.add_password()
 
         def on_generate():
             password = generator.generate_password()
             # delete from 0 to end
             password_entry.delete(0, tk.END)
             password_entry.insert(0, password)
+            password_entry2.delete(0, tk.END)
+            password_entry2.insert(0, password)
 
         tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
         tk.Button(
