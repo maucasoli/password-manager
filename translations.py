@@ -50,6 +50,7 @@ TRANSLATIONS = {
         "MSG_2FA_DISABLED": "2FA has been disabled",
         "MSG_2FA_ALREADY_DISABLED": "2FA is already disabled",
         "MSG_ARE_YOU_SURE": "Are you sure?",
+        "MSG_PASSWORD_CHANGED": "Password changed successfully",
         # auth validation
         "VALIDATION_PASSWORD_MIN_LENGTH": "Password must be at least 8 characters long.",
         "VALIDATION_PASSWORD_LOWERCASE": "Password must contain at least one lowercase letter.",
@@ -108,6 +109,7 @@ TRANSLATIONS = {
         "MSG_2FA_DISABLED": "La 2FA a été désactivée",
         "MSG_2FA_ALREADY_DISABLED": "La 2FA est déjà désactivée",
         "MSG_ARE_YOU_SURE": "Êtes-vous sûr ?",
+        "MSG_PASSWORD_CHANGED": "Le mot de passe a été modifié avec succès",
         # auth validation
         "VALIDATION_PASSWORD_MIN_LENGTH": "Le mot de passe doit contenir au moins 8 caractères.",
         "VALIDATION_PASSWORD_LOWERCASE": "Le mot de passe doit contenir au moins une lettre minuscule.",

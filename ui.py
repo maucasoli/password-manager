@@ -398,6 +398,8 @@ class Gui:
                             hash_masterpw, encrypted_otp = result
                             db.create_master_password(hash_masterpw, encrypted_otp)
                             db.set_salt(salt_bytes)
+                            msg.showinfo(t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED"))
+                            popup.destroy()
                         else:
                             msg.showwarning(t("DIALOG_ERROR"), result)
                     else:
