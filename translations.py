@@ -23,6 +23,7 @@ TRANSLATIONS = {
         "BTN_GENERATE_PASSWORD": "Generate password",
         "BTN_LOGOUT": "Logout",
         "BTN_CHECK": "Check",
+        "BTN_COPY": "Copy password",
         "BTN_DELETE": "Delete",
         # dialogs — titles
         "DIALOG_ALERT": "Alert",
@@ -73,6 +74,7 @@ TRANSLATIONS = {
         "BTN_GENERATE_PASSWORD": "Générer un mot de passe",
         "BTN_LOGOUT": "Déconnexion",
         "BTN_CHECK": "Vérifier",
+        "BTN_COPY": "Copier mot de passe",
         "BTN_DELETE": "Supprimer",
         # dialogs — titles
         "DIALOG_ALERT": "Alerte",
@@ -103,9 +105,11 @@ TRANSLATIONS = {
 
 LANG = "en"
 
+
 def set_lang(lang):
     global LANG
     LANG = lang
+
 
 def t(key: str) -> str:
     # if not key in lang, return the key itself

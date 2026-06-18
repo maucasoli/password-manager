@@ -4,6 +4,7 @@ import secrets
 import re
 import pyotp
 
+
 class Auth:
 
     def __init__(self, crypto):
@@ -21,7 +22,7 @@ class Auth:
             return "Password must contain at least one number."
         if not re.search(r"[!@#$%&*()_?-]", password):
             return "Password must contain at least one special character."
-        
+
         # hash master password
         hash = self.ph.hash(password)
 
@@ -29,14 +30,14 @@ class Auth:
         encrypted_otp = self.create_otp_secret()
 
         return hash, encrypted_otp
-    
+
     def create_otp_secret(self):
         # create otp secret and encrypt it
-        otp_secret = pyotp.random_base32().encode('utf-8')
+        otp_secret = pyotp.random_base32().encode("utf-8")
         encrypted_otp = self.crypto.encrypt(otp_secret)
 
         return encrypted_otp
-    
+
     def create_salt(self):
         # create salt for argon
         salt_bytes = secrets.token_bytes(32)

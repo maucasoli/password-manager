@@ -159,7 +159,9 @@ def get_salt():
 def exist_master_user():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT password_hash FROM master WHERE id = 1 AND password_hash IS NOT NULL")
+        cur.execute(
+            "SELECT password_hash FROM master WHERE id = 1 AND password_hash IS NOT NULL"
+        )
         return cur.fetchone() is not None
 
 

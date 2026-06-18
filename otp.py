@@ -16,7 +16,6 @@ class OTP:
     def clear(self):
         self.totp = None
         self.secret = None
-        
 
     def generate_totp(self):
         self.secret = db.get_otp_secret()
@@ -29,8 +28,7 @@ class OTP:
         buffer = BytesIO()
 
         uri = pyotp.TOTP(self.secret).provisioning_uri(
-            name="admin",
-            issuer_name="Password Manager"
+            name="admin", issuer_name="Password Manager"
         )
 
         img = qrcode.make(uri)
@@ -42,4 +40,3 @@ class OTP:
 
     def verify_totp(self, totp):
         return self.totp.verify(totp)
-    
