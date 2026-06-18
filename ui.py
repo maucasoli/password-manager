@@ -221,7 +221,6 @@ class Gui:
                     # check if result is tuple or error string
                     if isinstance(result, tuple):
                         hash_masterpw, encrypted_otp = result
-                        # otp = self.crypto.decrypt(encrypted_otp).decode("utf-8")
                         db.create_master_password(hash_masterpw, encrypted_otp)
                         db.set_salt(salt_bytes)
 
@@ -362,6 +361,58 @@ class Gui:
             self.root, text=t("BTN_DISABLE_2FA"), command=lambda: on_remove_2fa()
         )
         btn_remove_2fa.pack()
+
+        def on_change_password():
+            popup = tk.Toplevel()
+            popup.title(t("TITLE_CHANGE_PASSWORD"))
+            self.center_window(popup, 300, 250)
+
+            tk.Label(popup, text=t("LABEL_OLD_PASSWORD")).pack(pady=5)
+            old_password_entry = tk.Entry(popup, show="*")
+            old_password_entry.pack()
+
+            tk.Label(popup, text=t("LABEL_NEW_PASSWORD")).pack(pady=5)
+            new_password_entry = tk.Entry(popup, show="*")
+            new_password_entry.pack()
+
+            tk.Label(popup, text=t("LABEL_REENTER_PASSWORD")).pack(pady=5)
+            new_password_entry2 = tk.Entry(popup, show="*")
+            new_password_entry2.pack()
+
+            # TODO: fix code repetition
+            def on_ok():
+                old_password = old_password_entry.get()
+                new_password = new_password_entry.get()
+                new_password2 = new_password_entry2.get()
+
+                if self.auth.verify_master_password(old_password):
+                    if new_password == new_password2:
+                        # derive key on register
+                        salt_bytes = self.auth.create_salt()
+                        self.crypto.derive_key(new_password.encode("utf-8"), salt_bytes)
+
+                        # return a tuple with hash and salt
+                        result = self.auth.create_master_password(new_password)
+                        # check if result is tuple or error string
+                        if isinstance(result, tuple):
+                            hash_masterpw, encrypted_otp = result
+                            db.create_master_password(hash_masterpw, encrypted_otp)
+                            db.set_salt(salt_bytes)
+                        else:
+                            msg.showwarning(t("DIALOG_ERROR"), result)
+                    else:
+                        msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
+                else:
+                    tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
+
+            tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
+
+        btn_change_password = tk.Button(
+            self.root,
+            text=t("BTN_CHANGE_PASSWORD"),
+            command=lambda: on_change_password(),
+        )
+        btn_change_password.pack()
 
         self.tree = ttk.Treeview(
             self.root,
