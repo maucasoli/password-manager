@@ -9,13 +9,15 @@ def connect():
 def create_tables():
     with connect() as con:
         cur = con.cursor()
+        # no autoincrement due to insert or ignore
         cur.execute(
             "CREATE TABLE IF NOT EXISTS master ("
-            "id INTEGER primary key AUTOINCREMENT,"
-            "password_hash TEXT NOT NULL,"
-            "mfa_enabled INTEGER NOT NULL DEFAULT 0,"
+            "id INTEGER primary key,"
+            "password_hash TEXT,"
+            "mfa_enabled INTEGER DEFAULT 0,"
             "salt BLOB,"
-            "otp_secret TEXT"
+            "otp_secret TEXT,"
+            "language TEXT DEFAULT 'en'"
             ")"
         )
         cur.execute(
@@ -26,13 +28,33 @@ def create_tables():
             "password TEXT NOT NULL"
             ")"
         )
+        cur.execute("INSERT OR IGNORE INTO master (id, language) VALUES (1, 'en')")
         con.commit()
+
+
+def set_language(lang):
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("UPDATE master SET language = (?) WHERE id = 1", (lang,))
+        con.commit()
+
+
+def get_language():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT language FROM master WHERE id = 1")
+        row = cur.fetchone()
+
+        if row is None:
+            return "en"
+
+        return row[0]
 
 
 def check_master_password():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT password_hash FROM master")
+        cur.execute("SELECT password_hash FROM master WHERE id = 1")
         try:
             master_password = cur.fetchone()[0]
             return master_password
@@ -44,7 +66,7 @@ def create_master_password(password, otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "INSERT INTO master (password_hash, otp_secret) VALUES (?, ?)",
+            "UPDATE master SET password_hash = (?), otp_secret = (?) WHERE id = 1",
             (password, otp_secret),
         )
         con.commit()
@@ -53,7 +75,7 @@ def create_master_password(password, otp_secret):
 def set_salt(salt):
     with connect() as con:
         cur = con.cursor()
-        cur.execute("UPDATE master SET salt = (?)", (salt,))
+        cur.execute("UPDATE master SET salt = (?) WHERE id = 1", (salt,))
         con.commit()
 
 
@@ -61,16 +83,14 @@ def set_salt(salt):
 def set_mfa():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("UPDATE master SET mfa_enabled = 1")
+        cur.execute("UPDATE master SET mfa_enabled = 1 WHERE id = 1")
         con.commit()
 
 
 def disable_mfa():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("UPDATE master SET mfa_enabled = 0")
-        con.commit()
-        cur.execute("UPDATE master SET otp_secret = NULL")
+        cur.execute("UPDATE master SET mfa_enabled = 0, otp_secret = NULL WHERE id = 1")
         con.commit()
 
 
@@ -78,7 +98,7 @@ def disable_mfa():
 def get_mfa():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT mfa_enabled FROM master")
+        cur.execute("SELECT mfa_enabled FROM master WHERE id = 1")
         row = cur.fetchone()
 
         if row is None:
@@ -90,7 +110,7 @@ def get_mfa():
 def set_otp_secret(otp_secret):
     with connect() as con:
         cur = con.cursor()
-        cur.execute("UPDATE master SET otp_secret = (?)", (otp_secret,))
+        cur.execute("UPDATE master SET otp_secret = (?) WHERE id = 1", (otp_secret,))
         con.commit()
 
 
@@ -102,6 +122,7 @@ def read_table():
         return rows
 
 
+# TODO: fix try except
 def get_password(id):
     with connect() as con:
         cur = con.cursor()
@@ -123,17 +144,14 @@ def add_password(service, username, password):
 def delete_password(id):
     with connect() as con:
         cur = con.cursor()
-        cur.execute(
-            "DELETE FROM passwords WHERE id = (?)",
-            (id),
-        )
+        cur.execute("DELETE FROM passwords WHERE id = (?)", (id,))
         con.commit()
 
 
 def get_salt():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT salt FROM master")
+        cur.execute("SELECT salt FROM master WHERE id = 1")
         salt = cur.fetchone()[0]
         return salt
 
@@ -141,18 +159,13 @@ def get_salt():
 def exist_master_user():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT * FROM master")
-        try:
-            row = cur.fetchone()
-            return row is not None
-        except Exception as e:
-            print(f"Error: {e}")
-            return False
+        cur.execute("SELECT password_hash FROM master WHERE id = 1 AND password_hash IS NOT NULL")
+        return cur.fetchone() is not None
 
 
 def get_otp_secret():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("SELECT otp_secret FROM master")
+        cur.execute("SELECT otp_secret FROM master WHERE id = 1")
         otp_secret = cur.fetchone()[0]
         return otp_secret

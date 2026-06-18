@@ -7,6 +7,7 @@ from crypto import Crypto
 import generator
 from otp import OTP
 import time
+from translations import t, set_lang
 
 
 class Gui:
@@ -16,6 +17,9 @@ class Gui:
         self.width = 400
         self.height = 300
         self.tree = None
+
+        self.lang = db.get_language()
+        set_lang(self.lang)
 
         self.last_activity = time.time()
         self.locked = False
@@ -28,6 +32,13 @@ class Gui:
         self.crypto = Crypto()
         self.auth = Auth(self.crypto)
         self.OTP = OTP(self.crypto)
+    
+    # button in login page
+    def toggle_lang(self):
+        self.lang = "fr" if self.lang == "en" else "en"
+        set_lang(self.lang)
+        db.set_language(self.lang)
+        self.page_login()
 
     def clear_memory(self):
         self.tree = None
@@ -47,7 +58,7 @@ class Gui:
                     widget.destroy()
                 self.clear_memory()
                 self.locked = True
-                msg.showwarning("Alert", "You've been logged out")
+                msg.showwarning(t("DIALOG_ALERT"), t("MSG_LOGGED_OUT"))
                 self.page_login()
 
         self.root.after(1000, self.check_lock)
@@ -63,7 +74,7 @@ class Gui:
 
     def show_qrcode(self):
             popup = tk.Toplevel()
-            popup.title("QR CODE")
+            popup.title(t("TITLE_QR_CODE"))
             self.center_window(popup, 300, 250)
 
             photo = self.OTP.generate_uri()
@@ -74,27 +85,27 @@ class Gui:
             db.set_mfa()
 
             popup.wait_window(popup)
-       
+
     def page_login(self):
         for widget in self.root.winfo_children():
             widget.destroy()
 
         self.center_window(self.root, self.width, self.height)
-        self.root.title("Password Manager")
+        self.root.title(t("TITLE_PASSWORD_MANAGER"))
 
-        lbl_password = tk.Label(self.root, text="Master password:").pack()
+        lbl_password = tk.Label(self.root, text=t("LABEL_MASTER_PASSWORD")).pack()
         txt_password = tk.Entry(self.root, show="*")
         txt_password.pack()
 
         def check_totp():
             popup = tk.Toplevel()
-            popup.title("TOTP")
+            popup.title(t("TITLE_TOTP"))
             self.center_window(popup, 300, 250)
 
-            tk.Label(popup, text="TOTP").pack(pady=5)
+            tk.Label(popup, text=t("TITLE_TOTP")).pack(pady=5)
             totp_entry = tk.Entry(popup)
             totp_entry.pack()
-            
+
             totp = self.OTP.generate_totp()
             # list to keep scope
             result = [False]
@@ -104,13 +115,13 @@ class Gui:
                     result[0] = True
                     popup.destroy()
                 else:
-                    tk.messagebox.showerror("Error", "Invalid TOTP", parent=popup)
+                    tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_INVALID_TOTP"), parent=popup)
                     totp_entry.delete(0, tk.END)
                     totp_entry.focus_set()
 
             # allow enter button
             totp_entry.bind("<Return>", lambda e: on_otp())
-            tk.Button(popup, text="Check", command=on_otp).pack(pady=10)
+            tk.Button(popup, text=t("BTN_CHECK"), command=on_otp).pack(pady=10)
             popup.wait_window(popup)
 
             return result[0]
@@ -132,14 +143,14 @@ class Gui:
                     self.page_passwords(self.root)
 
             else:
-                tk.messagebox.showerror("Error", "Wrong password")
+                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
 
         def add_2FA():
             master_password = txt_password.get()
             if self.auth.verify_master_password(master_password):
                 response = msg.askyesno(
-                    "Success",
-                    "Do you want to configure 2FA now?"
+                    t("DIALOG_SUCCESS"),
+                    t("MSG_CONFIGURE_2FA")
                 )
                 if response:
                     password_bytes = master_password.encode("utf-8")
@@ -149,17 +160,21 @@ class Gui:
                     db.set_otp_secret(encrypted_otp)
                     self.show_qrcode()
             else:
-                tk.messagebox.showerror("Error", "No 2FA or wrong password")
+                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD"))
 
-        btn_login = tk.Button(self.root, text="Login", command=verify_master_password)
+        btn_login = tk.Button(self.root, text=t("BTN_LOGIN"), command=verify_master_password)
         btn_login.pack()
 
-        btn_create_master = tk.Button(self.root, text="Create Master User", command=lambda: self.create_master_password(self.root))
+        btn_create_master = tk.Button(self.root, text=t("BTN_CREATE_MASTER_USER"), command=lambda: self.create_master_password(self.root))
         btn_create_master.pack()
 
         # pass master password entry box
-        btn_add_2FA = tk.Button(self.root, text="Add 2FA", command=lambda: add_2FA())
+        btn_add_2FA = tk.Button(self.root, text=t("BTN_ENABLE_2FA"), command=lambda: add_2FA())
         btn_add_2FA.pack()
+
+        # button language
+        btn_lang = tk.Button(self.root, text=t("FR/EN"), command=lambda: self.toggle_lang())
+        btn_lang.pack()
 
         self.root.mainloop()
 
@@ -170,7 +185,7 @@ class Gui:
             for widget in root.winfo_children():
                 widget.destroy()
 
-            lbl_password = tk.Label(self.root, text="Choose a master password:").pack()
+            lbl_password = tk.Label(self.root, text=t("LABEL_CHOOSE_MASTER_PASSWORD")).pack()
             pw_entry = tk.Entry(self.root, show="*")
             pw_entry.pack()
 
@@ -191,37 +206,37 @@ class Gui:
                     db.set_salt(salt_bytes)
 
                     response = msg.askyesno(
-                        "Success",
-                        "Do you want to configure 2FA now?"
+                        t("DIALOG_SUCCESS"),
+                        t("MSG_CONFIGURE_2FA")
                     )
                     if response:
                         db.set_mfa()
-                        self.show_qrcode() 
+                        self.show_qrcode()
                     self.page_login()
                 else:
-                    msg.showwarning("Error", result)
+                    msg.showwarning(t("DIALOG_ERROR"), result)
 
-            tk.Button(root, text="Create", command=on_ok).pack(pady=10)
-            tk.Button(root, text="Return", command=lambda: self.page_login()).pack(pady=10)
+            tk.Button(root, text=t("BTN_CREATE"), command=on_ok).pack(pady=10)
+            tk.Button(root, text=t("BTN_BACK"), command=lambda: self.page_login()).pack(pady=10)
         else:
-            msg.showwarning("Alert", "Master user exists")
+            msg.showwarning(t("DIALOG_ALERT"), t("MSG_MASTER_USER_EXISTS"))
             self.page_login()
 
 
     def add_password(self):
         popup = tk.Toplevel()
-        popup.title("Add Password")
+        popup.title(t("TITLE_ADD_PASSWORD"))
         self.center_window(popup, 300, 250)
 
-        tk.Label(popup, text="Service").pack(pady=5)
+        tk.Label(popup, text=t("LABEL_SERVICE")).pack(pady=5)
         service_entry = tk.Entry(popup)
         service_entry.pack()
 
-        tk.Label(popup, text="Username").pack(pady=5)
+        tk.Label(popup, text=t("LABEL_USERNAME")).pack(pady=5)
         username_entry = tk.Entry(popup)
         username_entry.pack()
 
-        tk.Label(popup, text="Password").pack(pady=5)
+        tk.Label(popup, text=t("LABEL_PASSWORD")).pack(pady=5)
         password_entry = tk.Entry(popup, show="*")
         password_entry.pack()
 
@@ -231,14 +246,14 @@ class Gui:
             password = password_entry.get()
             password_bytes = password.encode("utf-8")
             encrypted_password = self.crypto.encrypt(password_bytes)
-            
+
             if service and username and password:
                 db.add_password(service, username, encrypted_password)
-                msg.showinfo("Success", "Password added")
+                msg.showinfo(t("DIALOG_SUCCESS"), t("MSG_PASSWORD_ADDED"))
                 popup.destroy()
                 self.load_data(self.tree)
             else:
-                tk.messagebox.showerror("Error", "All fields required")
+                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED"))
                 popup.focus_set()
 
 
@@ -248,8 +263,8 @@ class Gui:
             password_entry.delete(0, tk.END)
             password_entry.insert(0, password)
 
-        tk.Button(popup, text="OK", command=on_ok).pack(pady=10)
-        tk.Button(popup, text="Generate password", command=lambda: on_generate()).pack(pady=10)
+        tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
+        tk.Button(popup, text=t("BTN_GENERATE_PASSWORD"), command=lambda: on_generate()).pack(pady=10)
 
 
     def load_data(self, tree):
@@ -274,11 +289,11 @@ class Gui:
 
         lbl_title = tk.Label(
             self.root,
-            text="Passwords",
+            text=t("LABEL_PASSWORDS"),
             font=("Arial", 20, "bold"),
         ).pack()
 
-        btn_add = tk.Button(self.root, text="Add Password", command=self.add_password)
+        btn_add = tk.Button(self.root, text=t("TITLE_ADD_PASSWORD"), command=self.add_password)
         btn_add.pack()
 
         def on_logout():
@@ -287,22 +302,22 @@ class Gui:
             self.clear_memory()
             self.page_login()
 
-        btn_logout = tk.Button(self.root, text="Logout", command=lambda: on_logout())
+        btn_logout = tk.Button(self.root, text=t("BTN_LOGOUT"), command=lambda: on_logout())
         btn_logout.pack()
 
         def on_remove_2fa():
             if db.get_mfa():
                 response = msg.askyesno(
-                    "Success",
-                    "Do you want to remove 2FA?"
+                    t("DIALOG_SUCCESS"),
+                    t("MSG_REMOVE_2FA_CONFIRM")
                 )
                 if response:
                     db.disable_mfa()
-                    msg.showinfo("2FA status", "2FA has been disabled")
+                    msg.showinfo(t("DIALOG_2FA_STATUS"), t("MSG_2FA_DISABLED"))
             else:
-                tk.messagebox.showerror("Error", "2FA already disabled", parent=root)
+                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_2FA_ALREADY_DISABLED"), parent=root)
 
-        btn_remove_2fa = tk.Button(self.root, text="Remove 2FA", command=lambda: on_remove_2fa())
+        btn_remove_2fa = tk.Button(self.root, text=t("BTN_DISABLE_2FA"), command=lambda: on_remove_2fa())
         btn_remove_2fa.pack()
 
         self.tree = ttk.Treeview(
@@ -311,9 +326,9 @@ class Gui:
             show="headings",
         )
 
-        self.tree.heading("Service", text="Service")
-        self.tree.heading("Username", text="Username")
-        self.tree.heading("Password", text="Password")
+        self.tree.heading("Service", text=t("LABEL_SERVICE"))
+        self.tree.heading("Username", text=t("LABEL_USERNAME"))
+        self.tree.heading("Password", text=t("LABEL_PASSWORD"))
 
         # hide id
         self.tree.column("id", width=0, stretch=False)
@@ -331,7 +346,7 @@ class Gui:
             id = values[0]
             encrypted_password = db.get_password(id)
             real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
-            msg.showinfo("Password", real_password)
+            msg.showinfo(t("LABEL_PASSWORD"), real_password)
 
         # double click to show
         # todo: change to copy (30s)
@@ -343,14 +358,14 @@ class Gui:
 
             if not item:
                 return
-            
+
             # highlight chosen line
             self.tree.selection_set(item)
 
             menu = tk.Menu(self.root, tearoff=0)
 
             menu.add_command(
-                label="Delete",
+                label=t("BTN_DELETE"),
                 command = lambda: delete_password(item)
             )
 
@@ -367,8 +382,8 @@ class Gui:
             item_id = values[0]
 
             response = msg.askyesno(
-                "Delete",
-                "Are you sure?"
+                t("BTN_DELETE"),
+                t("MSG_ARE_YOU_SURE")
             )
 
             if response:
