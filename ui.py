@@ -387,7 +387,18 @@ class Gui:
 
                 if self.auth.verify_master_password(old_password):
                     if new_password == new_password2:
-                        # derive key on register
+
+                        # TODO: unencrypt with old key; encrypt with new key
+                        # list with tuple (id, pw)
+                        # TODO: FIX LOGIC
+                        password_list = db.get_all_passwords()
+                        for idx, res in password_list:
+                            real_password = self.crypto.decrypt(res[1]).decode("utf-8")
+                            password_list[idx][1] = real_password
+                        print(password_list)
+                           
+
+                        # derive new key
                         salt_bytes = self.auth.create_salt()
                         self.crypto.derive_key(new_password.encode("utf-8"), salt_bytes)
 
@@ -398,7 +409,9 @@ class Gui:
                             hash_masterpw, encrypted_otp = result
                             db.create_master_password(hash_masterpw, encrypted_otp)
                             db.set_salt(salt_bytes)
-                            msg.showinfo(t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED"))
+                            msg.showinfo(
+                                t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
+                            )
                             popup.destroy()
                         else:
                             msg.showwarning(t("DIALOG_ERROR"), result)

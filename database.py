@@ -131,6 +131,24 @@ def get_password(id):
         return password
 
 
+# return [(id, password), ...]
+def get_all_passwords():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT id, password FROM passwords")
+        password = cur.fetchall()
+        return password
+
+
+def update_password(id, new_password):
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE passwords SET password = (?) WHERE id = (?)", (new_password, id)
+        )
+        con.commit()
+
+
 def add_password(service, username, password):
     with connect() as con:
         cur = con.cursor()
