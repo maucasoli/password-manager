@@ -14,6 +14,7 @@ class GUI:
 
     def __init__(self):
         self.root = tk.Tk()
+        self.root.configure(bg="#1A1D2E")
         self.width = 400
         self.height = 300
         self.tree = None
@@ -95,6 +96,13 @@ class GUI:
 
         self.center_window(self.root, self.width, self.height)
         self.root.title(t("TITLE_PASSWORD_MANAGER"))
+        tk.Label(
+            self.root,
+            text=t("TITLE_PASSWORD_MANAGER"),
+            font=("Segoe UI", 18, "bold"),
+            fg="#E5E7EB",
+            bg="#1A1D2E",
+        ).pack(pady=10)
 
         lbl_password = tk.Label(self.root, text=t("LABEL_MASTER_PASSWORD")).pack()
         txt_password = tk.Entry(self.root, show="*")
@@ -110,6 +118,7 @@ class GUI:
             totp_entry.pack()
 
             totp = self.OTP.generate_totp()
+
             # list to keep scope
             result = [False]
 
@@ -160,6 +169,7 @@ class GUI:
                     salt_bytes = db.get_salt()
                     self.crypto.derive_key(password_bytes, salt_bytes)
                     encrypted_otp = self.auth.create_otp_secret()
+                    self.OTP.set_otp_secret(encrypted_otp)
                     db.set_otp_secret(encrypted_otp)
                     self.show_qrcode()
             else:
@@ -225,6 +235,7 @@ class GUI:
 
                         _, masterpw_hash = result
                         encrypted_otp = self.auth.create_otp_secret()
+                        self.OTP.set_otp_secret(encrypted_otp)
                         db.create_master_password(masterpw_hash, encrypted_otp)
                         db.set_salt(salt_bytes)
 

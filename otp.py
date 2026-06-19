@@ -17,17 +17,20 @@ class OTP:
         self.totp = None
         self.secret = None
 
+    def set_otp_secret(self, secret):
+        self.secret = secret
+
     def generate_totp(self):
-        self.secret = db.get_otp_secret()
-        secret_decrypted = self.crypto.decrypt(self.secret)
-        self.totp = pyotp.TOTP(secret_decrypted)
+        secret = self.crypto.decrypt(self.secret).decode("utf-8")
+        self.totp = pyotp.TOTP(secret)
         print("TOTP:", self.totp.now())
         return self.totp.now()
 
     def generate_uri(self):
+        secret = self.crypto.decrypt(self.secret).decode("utf-8")
         buffer = BytesIO()
 
-        uri = pyotp.TOTP(self.secret).provisioning_uri(
+        uri = pyotp.TOTP(secret).provisioning_uri(
             name="admin", issuer_name="Password Manager"
         )
 
