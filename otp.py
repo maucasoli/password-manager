@@ -27,6 +27,7 @@ class OTP:
         return self.totp.now()
 
     def generate_uri(self):
+
         secret = self.crypto.decrypt(self.secret).decode("utf-8")
         buffer = BytesIO()
 

@@ -155,6 +155,7 @@ class GUI:
                 self.crypto.derive_key(password_bytes, salt_bytes)
 
                 if db.get_mfa():
+                    self.OTP.set_otp_secret(db.get_otp_secret())
                     if check_totp():
                         self.page_passwords(self.root)
                 else:
@@ -212,10 +213,6 @@ class GUI:
             bg="#2F3355",
         )
         btn_lang.pack(side="right", padx=20)
-        # btn_lang = tk.Button(
-        #     self.root, text=t("FR/EN"), command=lambda: self.toggle_lang()
-        # )
-        # btn_lang.pack()
 
         self.root.mainloop()
 
