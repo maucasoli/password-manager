@@ -10,7 +10,7 @@ import time
 from translations import t, set_lang
 
 
-class Gui:
+class GUI:
 
     def __init__(self):
         self.root = tk.Tk()
@@ -32,6 +32,9 @@ class Gui:
         self.crypto = Crypto()
         self.auth = Auth(self.crypto)
         self.OTP = OTP(self.crypto)
+
+    def run(self):
+        self.page_login()
 
     # button in login page
     def toggle_lang(self):

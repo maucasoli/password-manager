@@ -1,12 +1,11 @@
-from ui import Gui
+from ui import GUI
 import database as db
 
 
 def main():
-    db.connect()
     db.create_tables()
-    gui = Gui()
-    gui.page_login()
+    app = GUI()
+    app.run()
 
 
 if __name__ == "__main__":
