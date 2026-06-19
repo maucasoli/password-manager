@@ -390,25 +390,29 @@ class GUI:
 
                 if self.auth.verify_master_password(old_password):
                     if new_password == new_password2:
-
-                        # TODO: unencrypt with old key; encrypt with new key
-                        # list with tuple (id, pw)
-                        # TODO: FIX LOGIC
-                        password_list = db.get_all_passwords()
-                        for idx, res in password_list:
-                            real_password = self.crypto.decrypt(res[1]).decode("utf-8")
-                            password_list[idx][1] = real_password
-                        print(password_list)
-                           
-
-                        # derive new key
-                        salt_bytes = self.auth.create_salt()
-                        self.crypto.derive_key(new_password.encode("utf-8"), salt_bytes)
-
                         # return a tuple with hash and salt
                         result = self.auth.create_master_password(new_password)
                         # check if result is tuple or error string
                         if isinstance(result, tuple):
+
+                            # decrypt
+                            password_list = db.get_all_passwords()
+                            for idx, (id, pw) in enumerate(password_list):
+                                real_password = self.crypto.decrypt(pw).decode("utf-8")
+                                password_list[idx] = (id, real_password)
+
+                            # derive new key
+                            salt_bytes = self.auth.create_salt()
+                            self.crypto.derive_key(
+                                new_password.encode("utf-8"), salt_bytes
+                            )
+
+                            # encrypt
+                            for _, (id, pw) in enumerate(password_list):
+                                pw_bytes = pw.encode("utf-8")
+                                encrypted_pw = self.crypto.encrypt(pw_bytes)
+                                db.update_password(id, encrypted_pw)
+
                             hash_masterpw, encrypted_otp = result
                             db.create_master_password(hash_masterpw, encrypted_otp)
                             db.set_salt(salt_bytes)
@@ -418,10 +422,13 @@ class GUI:
                             popup.destroy()
                         else:
                             msg.showwarning(t("DIALOG_ERROR"), result)
+                            popup.destroy()
                     else:
                         msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
+                        popup.destroy()
                 else:
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
+                    popup.destroy()
 
             tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
 
