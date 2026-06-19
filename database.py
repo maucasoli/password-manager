@@ -102,7 +102,7 @@ def set_mfa():
 def disable_mfa():
     with connect() as con:
         cur = con.cursor()
-        cur.execute("UPDATE master SET mfa_enabled = 0, otp_secret = NULL WHERE id = 1")
+        cur.execute("UPDATE master SET mfa_enabled = 0 WHERE id = 1")
         con.commit()
 
 

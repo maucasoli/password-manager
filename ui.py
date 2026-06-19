@@ -422,7 +422,6 @@ class GUI:
                             db.set_otp_secret(encrypted_otp)
 
                             _, masterpw_hash = result
-                            # encrypted_otp = db.get_otp_secret()
                             db.create_master_password(masterpw_hash, encrypted_otp)
                             db.set_salt(salt_bytes)
                             msg.showinfo(
