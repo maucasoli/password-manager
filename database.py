@@ -51,6 +51,18 @@ def get_language():
         return row[0]
 
 
+def get_otp_secret():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT otp_secret FROM master WHERE id = 1")
+        row = cur.fetchone()
+
+        if row is None:
+            return False
+
+        return row[0]
+
+
 def check_master_password():
     with connect() as con:
         cur = con.cursor()
@@ -181,11 +193,3 @@ def exist_master_user():
             "SELECT password_hash FROM master WHERE id = 1 AND password_hash IS NOT NULL"
         )
         return cur.fetchone() is not None
-
-
-def get_otp_secret():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT otp_secret FROM master WHERE id = 1")
-        otp_secret = cur.fetchone()[0]
-        return otp_secret

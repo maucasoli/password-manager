@@ -215,16 +215,17 @@ class GUI:
                 masterpw2 = pw_entry2.get()
 
                 if masterpw == masterpw2:
-                    # derive key on register
-                    salt_bytes = self.auth.create_salt()
-                    self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
-
-                    # return a tuple with hash and salt
+                    # return a tuple with true and hash
                     result = self.auth.create_master_password(masterpw)
                     # check if result is tuple or error string
                     if isinstance(result, tuple):
-                        hash_masterpw, encrypted_otp = result
-                        db.create_master_password(hash_masterpw, encrypted_otp)
+                        # derive key on register
+                        salt_bytes = self.auth.create_salt()
+                        self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
+
+                        _, masterpw_hash = result
+                        encrypted_otp = self.auth.create_otp_secret()
+                        db.create_master_password(masterpw_hash, encrypted_otp)
                         db.set_salt(salt_bytes)
 
                         response = msg.askyesno(
@@ -390,7 +391,7 @@ class GUI:
 
                 if self.auth.verify_master_password(old_password):
                     if new_password == new_password2:
-                        # return a tuple with hash and salt
+                        # return a tuple with true and hash
                         result = self.auth.create_master_password(new_password)
                         # check if result is tuple or error string
                         if isinstance(result, tuple):
@@ -400,6 +401,10 @@ class GUI:
                             for idx, (id, pw) in enumerate(password_list):
                                 real_password = self.crypto.decrypt(pw).decode("utf-8")
                                 password_list[idx] = (id, real_password)
+                            encrypted_otp = db.get_otp_secret()
+                            decrypted_otp = self.crypto.decrypt(encrypted_otp).decode(
+                                "utf-8"
+                            )
 
                             # derive new key
                             salt_bytes = self.auth.create_salt()
@@ -412,9 +417,13 @@ class GUI:
                                 pw_bytes = pw.encode("utf-8")
                                 encrypted_pw = self.crypto.encrypt(pw_bytes)
                                 db.update_password(id, encrypted_pw)
+                            otp_bytes = decrypted_otp.encode("utf-8")
+                            encrypted_otp = self.crypto.encrypt(otp_bytes)
+                            db.set_otp_secret(encrypted_otp)
 
-                            hash_masterpw, encrypted_otp = result
-                            db.create_master_password(hash_masterpw, encrypted_otp)
+                            _, masterpw_hash = result
+                            # encrypted_otp = db.get_otp_secret()
+                            db.create_master_password(masterpw_hash, encrypted_otp)
                             db.set_salt(salt_bytes)
                             msg.showinfo(
                                 t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
