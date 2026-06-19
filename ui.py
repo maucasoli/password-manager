@@ -8,6 +8,7 @@ import generator
 from otp import OTP
 import time
 from translations import t, set_lang
+from ui_theme import Theme
 
 
 class GUI:
@@ -15,6 +16,8 @@ class GUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.configure(bg="#1A1D2E")
+        self.theme = Theme()
+
         self.width = 400
         self.height = 300
         self.tree = None
@@ -96,16 +99,15 @@ class GUI:
 
         self.center_window(self.root, self.width, self.height)
         self.root.title(t("TITLE_PASSWORD_MANAGER"))
-        tk.Label(
-            self.root,
-            text=t("TITLE_PASSWORD_MANAGER"),
-            font=("Segoe UI", 18, "bold"),
-            fg="#E5E7EB",
-            bg="#1A1D2E",
+        self.theme.label(
+            self.root, t("TITLE_PASSWORD_MANAGER"), ("Segoe UI", 18, "bold")
         ).pack(pady=10)
 
-        lbl_password = tk.Label(self.root, text=t("LABEL_MASTER_PASSWORD")).pack()
-        txt_password = tk.Entry(self.root, show="*")
+        self.theme.label(
+            self.root, t("LABEL_MASTER_PASSWORD"), ("Segoe UI", 12), fg="#669096"
+        ).pack(pady=5)
+        txt_password = self.theme.entry(self.root, show="*")
+        # txt_password = tk.Entry(self.root, show="*")
         txt_password.pack()
 
         def check_totp():
@@ -136,6 +138,7 @@ class GUI:
 
             # allow enter button
             totp_entry.bind("<Return>", lambda e: on_otp())
+
             tk.Button(popup, text=t("BTN_CHECK"), command=on_otp).pack(pady=10)
             popup.wait_window(popup)
 
@@ -177,29 +180,42 @@ class GUI:
                     t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
                 )
 
-        btn_login = tk.Button(
-            self.root, text=t("BTN_LOGIN"), command=verify_master_password
+        # button login
+        btn_login = self.theme.button(
+            self.root, verify_master_password, t("BTN_LOGIN"), bg="#4F6EF7"
         )
-        btn_login.pack()
+        btn_login.pack(pady=5)
 
-        btn_create_master = tk.Button(
+        # button create master user
+        btn_create_master = self.theme.button(
             self.root,
-            text=t("BTN_CREATE_MASTER_USER"),
-            command=lambda: self.create_master_password(self.root),
+            lambda: self.create_master_password(self.root),
+            t("BTN_CREATE_MASTER_USER"),
+            bg="#2F3355",
         )
-        btn_create_master.pack()
+        btn_create_master.pack(pady=10)
 
-        # pass master password entry box
-        btn_add_2FA = tk.Button(
-            self.root, text=t("BTN_ENABLE_2FA"), command=lambda: add_2FA()
+        # button add 2FA
+        btn_add_2FA = self.theme.button(
+            self.root,
+            lambda: add_2FA(),
+            t("BTN_ENABLE_2FA"),
+            bg="#2F3355",
         )
-        btn_add_2FA.pack()
+        btn_add_2FA.pack(pady=0)
 
         # button language
-        btn_lang = tk.Button(
-            self.root, text=t("FR/EN"), command=lambda: self.toggle_lang()
+        btn_lang = self.theme.button(
+            self.root,
+            lambda: self.toggle_lang(),
+            t("FR/EN"),
+            bg="#2F3355",
         )
-        btn_lang.pack()
+        btn_lang.pack(side="right", padx=20)
+        # btn_lang = tk.Button(
+        #     self.root, text=t("FR/EN"), command=lambda: self.toggle_lang()
+        # )
+        # btn_lang.pack()
 
         self.root.mainloop()
 
