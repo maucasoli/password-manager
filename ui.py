@@ -98,19 +98,6 @@ class GUI:
             widget.destroy()
 
         def check_totp():
-            popup = tk.Toplevel()
-            popup.title(t("TITLE_TOTP"))
-            self.center_window(popup, 300, 250)
-
-            tk.Label(popup, text=t("TITLE_TOTP")).pack(pady=5)
-            totp_entry = tk.Entry(popup)
-            totp_entry.pack()
-
-            totp = self.OTP.generate_totp()
-
-            # list to keep scope
-            result = [False]
-
             def on_otp():
                 input_totp = totp_entry.get()
                 if self.OTP.verify_totp(input_totp):
@@ -123,10 +110,42 @@ class GUI:
                     totp_entry.delete(0, tk.END)
                     totp_entry.focus_set()
 
+            #
+            popup = tk.Toplevel()
+            popup.configure(bg="#1A1D2E")
+            popup.title(t("TITLE_TOTP"))
+            self.center_window(popup, 300, 200)
+
+            # label TOTP
+            self.theme.label(
+                popup, t("TITLE_TOTP"), ("Segoe UI", 18, "bold")
+            ).pack(pady=10)
+
+            # entry TOTP
+            totp_entry = self.theme.entry(popup, font=("Segoe UI", 12))
+            totp_entry.pack(pady=(0, 10))
+
+            # button verify TOTP
+            btn_verify_totp = self.theme.button(
+                popup,
+                on_otp,
+                t("BTN_CHECK"),
+                font=("Segoe UI", 12, "bold"),
+                bg="#4F6EF7",
+                width=18,
+                height=1,
+            )
+            btn_verify_totp.pack(pady=10)
+
+            totp = self.OTP.generate_totp()
+
+            # list to keep scope
+            result = [False]
+
+
             # allow enter button
             totp_entry.bind("<Return>", lambda e: on_otp())
 
-            tk.Button(popup, text=t("BTN_CHECK"), command=on_otp).pack(pady=10)
             popup.wait_window(popup)
 
             return result[0]
@@ -202,7 +221,7 @@ class GUI:
         btn_create_master = self.theme.button(
             self.root,
             lambda: self.create_master_password(self.root),
-            t("BTN_CREATE_MASTER_USER"),
+            t("BTN_CREATE_USER"),
             font=("Segoe UI", 11, "bold"),
             bg="#2F3355",
         )
@@ -277,11 +296,11 @@ class GUI:
                 t("LABEL_CHOOSE_MASTER_PASSWORD"),
                 ("Segoe UI", 12),
                 fg="#889082",
-            ).pack(pady=(0, 5))
+            ).pack(pady=(0, 2))
 
             # entry password
             pw_entry = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
-            pw_entry.pack()
+            pw_entry.pack(pady=(0, 10))
 
             # label retype password
             self.theme.label(
@@ -289,11 +308,11 @@ class GUI:
                 t("LABEL_REENTER_MASTER_PASSWORD"),
                 ("Segoe UI", 12),
                 fg="#889082",
-            ).pack(pady=(0, 5))
+            ).pack(pady=(0, 2))
 
             # entry retype password
             pw_entry2 = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
-            pw_entry2.pack()
+            pw_entry2.pack(pady=(0, 10))
 
             # button create user
             btn_create = self.theme.button(
@@ -320,7 +339,7 @@ class GUI:
             btn_back.pack(pady=10)
 
         else:
-            msg.showwarning(t("DIALOG_ALERT"), t("MSG_MASTER_USER_EXISTS"))
+            msg.showwarning(t("DIALOG_ALERT"), t("MSG_USER_EXISTS"))
             self.page_login()
 
     def add_password(self):
@@ -582,6 +601,7 @@ class GUI:
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                     popup.destroy()
 
+            #
             popup = tk.Toplevel()
             popup.configure(bg="#1A1D2E")
             self.center_window(popup, 300, 300)
