@@ -60,7 +60,7 @@ class GUI:
             idle_time = time.time() - self.last_activity
 
             # seconds
-            if idle_time >= 60:
+            if idle_time >= 6000:
                 for widget in self.root.winfo_children():
                     widget.destroy()
                 self.clear_memory()
@@ -104,10 +104,9 @@ class GUI:
         ).pack(pady=10)
 
         self.theme.label(
-            self.root, t("LABEL_MASTER_PASSWORD"), ("Segoe UI", 12), fg="#669096"
+            self.root, t("LABEL_MASTER_PASSWORD"), ("Segoe UI", 12), fg="#889082"
         ).pack(pady=5)
         txt_password = self.theme.entry(self.root, show="*")
-        # txt_password = tk.Entry(self.root, show="*")
         txt_password.pack()
 
         def check_totp():
@@ -183,9 +182,15 @@ class GUI:
 
         # button login
         btn_login = self.theme.button(
-            self.root, verify_master_password, t("BTN_LOGIN"), bg="#4F6EF7"
+            self.root,
+            verify_master_password,
+            t("BTN_LOGIN"),
+            font=("Segoe UI", 9, "bold"),
+            bg="#4F6EF7",
+            width=17,
+            height=1,
         )
-        btn_login.pack(pady=5)
+        btn_login.pack(pady=10)
 
         # button create master user
         btn_create_master = self.theme.button(
@@ -211,6 +216,8 @@ class GUI:
             lambda: self.toggle_lang(),
             t("FR/EN"),
             bg="#2F3355",
+            width=5,
+            height=2,
         )
         btn_lang.pack(side="right", padx=20)
 
@@ -350,27 +357,76 @@ class GUI:
         self.locked = False
         self.check_lock()
 
-        lbl_title = tk.Label(
-            self.root,
-            text=t("LABEL_PASSWORDS"),
-            font=("Arial", 20, "bold"),
-        ).pack()
+        # top frame (label title, button logout)
+        top_frame = tk.Frame(self.root, bg="#2F3355")
+        top_frame.pack(fill="x", padx=0, pady=(0, 10))
 
-        btn_add = tk.Button(
-            self.root, text=t("TITLE_ADD_PASSWORD"), command=self.add_password
+        # label title
+        self.theme.label(
+            top_frame, t("LABEL_PASSWORDS"), ("Segoe UI", 18, "bold"), bg="#2F3355"
+        ).pack(side="left", padx=(5, 0), pady=(5, 5))
+
+        # button logout
+        btn_logout = self.theme.button(
+            top_frame,
+            lambda: on_logout(),
+            t("BTN_LOGOUT"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#D9534F",
+            width=20,
+            height=2,
         )
-        btn_add.pack()
+        btn_logout.pack(side="right", padx=(0, 5), pady=(5, 5))
+
+        # middle frame (button add password, button remove 2FA)
+        middle_frame = tk.Frame(self.root, bg="#1A1D2E")
+        middle_frame.pack(fill="x", padx=0, pady=(0, 0))
+
+        # button add password
+        btn_add = self.theme.button(
+            middle_frame,
+            self.add_password,
+            t("TITLE_ADD_PASSWORD"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#4F6EF7",
+            width=25,
+            height=2,
+        )
+        btn_add.pack(side="left", padx=(5, 0), pady=(2, 2))
+
+        # button remove 2FA
+        btn_remove_2fa = self.theme.button(
+            middle_frame,
+            lambda: on_remove_2fa(),
+            t("BTN_DISABLE_2FA"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#2F3355",
+            width=20,
+            height=2,
+        )
+        btn_remove_2fa.pack(side="right", padx=(0, 5), pady=(2, 2))
+
+        # bottom frame (button change master password)
+        bottom_frame = tk.Frame(self.root, bg="#1A1D2E")
+        bottom_frame.pack(fill="x", padx=0, pady=(0, 2))
+
+        # button change master password
+        btn_change_password = self.theme.button(
+            bottom_frame,
+            lambda: on_change_password(),
+            t("BTN_CHANGE_PASSWORD"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#2F3355",
+            width=20,
+            height=2,
+        )
+        btn_change_password.pack(side="right", padx=(0, 5), pady=(2, 5))
 
         def on_logout():
             for widget in root.winfo_children():
                 widget.destroy()
             self.clear_memory()
             self.page_login()
-
-        btn_logout = tk.Button(
-            self.root, text=t("BTN_LOGOUT"), command=lambda: on_logout()
-        )
-        btn_logout.pack()
 
         def on_remove_2fa():
             if db.get_mfa():
@@ -384,11 +440,6 @@ class GUI:
                 tk.messagebox.showerror(
                     t("DIALOG_ERROR"), t("MSG_2FA_ALREADY_DISABLED"), parent=root
                 )
-
-        btn_remove_2fa = tk.Button(
-            self.root, text=t("BTN_DISABLE_2FA"), command=lambda: on_remove_2fa()
-        )
-        btn_remove_2fa.pack()
 
         def on_change_password():
             popup = tk.Toplevel()
@@ -464,13 +515,11 @@ class GUI:
 
             tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
 
-        btn_change_password = tk.Button(
-            self.root,
-            text=t("BTN_CHANGE_PASSWORD"),
-            command=lambda: on_change_password(),
-        )
-        btn_change_password.pack()
-
+        # treeview
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Treeview.Heading", background="#2F3355", foreground="#E5E7EB")
+        style.configure("Treeview", fieldbackground="#1A1D2E", background="#1A1D2E", foreground="#E5E7EB")
         self.tree = ttk.Treeview(
             self.root,
             columns=("id", "Service", "Username", "Password"),
@@ -481,7 +530,7 @@ class GUI:
         self.tree.heading("Username", text=t("LABEL_USERNAME"))
         self.tree.heading("Password", text=t("LABEL_PASSWORD"))
 
-        # hide id
+        # hide id column
         self.tree.column("id", width=0, stretch=False)
         self.tree.column("Service", width=50)
         self.tree.column("Username", width=150)
