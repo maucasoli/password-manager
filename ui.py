@@ -228,87 +228,102 @@ class GUI:
             width=6,
             height=2,
         )
-        btn_lang.pack(side="right", padx=20, pady=(0,10))
+        btn_lang.pack(side="right", padx=20, pady=(0, 10))
 
         self.root.mainloop()
 
     def create_master_password(self, root):
+        def on_ok():
+            masterpw = pw_entry.get()
+            masterpw2 = pw_entry2.get()
+
+            if masterpw == masterpw2:
+                # return a tuple with true and hash
+                result = self.auth.create_master_password(masterpw)
+                # check if result is tuple or error string
+                if isinstance(result, tuple):
+                    # derive key on register
+                    salt_bytes = self.auth.create_salt()
+                    self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
+
+                    _, masterpw_hash = result
+                    encrypted_otp = self.auth.create_otp_secret()
+                    self.OTP.set_otp_secret(encrypted_otp)
+                    db.create_master_password(masterpw_hash, encrypted_otp)
+                    db.set_salt(salt_bytes)
+
+                    response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
+                    if response:
+                        db.set_mfa()
+                        self.show_qrcode()
+                    self.page_login()
+                else:
+                    msg.showwarning(t("DIALOG_ERROR"), result)
+            else:
+                msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
+
         if not db.exist_master_user():
             for widget in root.winfo_children():
                 widget.destroy()
 
-            lbl_password = tk.Label(
-                self.root, text=t("LABEL_CHOOSE_MASTER_PASSWORD")
-            ).pack()
-            pw_entry = tk.Entry(self.root, show="*")
+            # label title
+            self.theme.label(
+                self.root, t("TITLE_CREATE_USER"), ("Segoe UI", 18, "bold")
+            ).pack(pady=10)
+
+            # label type password
+            self.theme.label(
+                self.root,
+                t("LABEL_CHOOSE_MASTER_PASSWORD"),
+                ("Segoe UI", 12),
+                fg="#889082",
+            ).pack(pady=(0, 5))
+
+            # entry password
+            pw_entry = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
             pw_entry.pack()
 
-            lbl_password2 = tk.Label(
-                self.root, text=t("LABEL_REENTER_MASTER_PASSWORD")
-            ).pack()
-            pw_entry2 = tk.Entry(self.root, show="*")
+            # label retype password
+            self.theme.label(
+                self.root,
+                t("LABEL_REENTER_MASTER_PASSWORD"),
+                ("Segoe UI", 12),
+                fg="#889082",
+            ).pack(pady=(0, 5))
+
+            # entry confirm password
+            pw_entry2 = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
             pw_entry2.pack()
 
-            def on_ok():
-                masterpw = pw_entry.get()
-                masterpw2 = pw_entry2.get()
-
-                if masterpw == masterpw2:
-                    # return a tuple with true and hash
-                    result = self.auth.create_master_password(masterpw)
-                    # check if result is tuple or error string
-                    if isinstance(result, tuple):
-                        # derive key on register
-                        salt_bytes = self.auth.create_salt()
-                        self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
-
-                        _, masterpw_hash = result
-                        encrypted_otp = self.auth.create_otp_secret()
-                        self.OTP.set_otp_secret(encrypted_otp)
-                        db.create_master_password(masterpw_hash, encrypted_otp)
-                        db.set_salt(salt_bytes)
-
-                        response = msg.askyesno(
-                            t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA")
-                        )
-                        if response:
-                            db.set_mfa()
-                            self.show_qrcode()
-                        self.page_login()
-                    else:
-                        msg.showwarning(t("DIALOG_ERROR"), result)
-                else:
-                    msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
-
-            tk.Button(root, text=t("BTN_CREATE"), command=on_ok).pack(pady=10)
-            tk.Button(root, text=t("BTN_BACK"), command=lambda: self.page_login()).pack(
-                pady=10
+            # button create user
+            btn_create = self.theme.button(
+                self.root,
+                on_ok,
+                t("BTN_CREATE"),
+                font=("Segoe UI", 12, "bold"),
+                bg="#4F6EF7",
+                width=18,
+                height=1,
             )
+            btn_create.pack(pady=10)
+
+            # button back
+            btn_back = self.theme.button(
+                self.root,
+                lambda: self.page_login(),
+                t("BTN_BACK"),
+                font=("Segoe UI", 12, "bold"),
+                bg="#2F3355",
+                width=18,
+                height=1,
+            )
+            btn_back.pack(pady=10)
+
         else:
             msg.showwarning(t("DIALOG_ALERT"), t("MSG_MASTER_USER_EXISTS"))
             self.page_login()
 
     def add_password(self):
-        popup = tk.Toplevel()
-        popup.title(t("TITLE_ADD_PASSWORD"))
-        self.center_window(popup, 300, 300)
-
-        tk.Label(popup, text=t("LABEL_SERVICE")).pack(pady=5)
-        service_entry = tk.Entry(popup)
-        service_entry.pack()
-
-        tk.Label(popup, text=t("LABEL_USERNAME")).pack(pady=5)
-        username_entry = tk.Entry(popup)
-        username_entry.pack()
-
-        tk.Label(popup, text=t("LABEL_PASSWORD")).pack(pady=5)
-        password_entry = tk.Entry(popup, show="*")
-        password_entry.pack()
-
-        tk.Label(popup, text=t("LABEL_REENTER_PASSWORD")).pack(pady=5)
-        password_entry2 = tk.Entry(popup, show="*")
-        password_entry2.pack()
-
         def on_ok():
             service = service_entry.get()
             username = username_entry.get()
@@ -341,10 +356,71 @@ class GUI:
             password_entry2.delete(0, tk.END)
             password_entry2.insert(0, password)
 
-        tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
-        tk.Button(
-            popup, text=t("BTN_GENERATE_PASSWORD"), command=lambda: on_generate()
-        ).pack(pady=10)
+        #
+        popup = tk.Toplevel()
+        popup.configure(bg="#1A1D2E")
+        self.center_window(popup, 300, 400)
+        popup.title(t("TITLE_ADD_PASSWORD"))
+
+        # label service
+        self.theme.label(
+            popup, t("LABEL_SERVICE"), ("Segoe UI", 12), fg="#889082"
+        ).pack(pady=(5, 2))
+
+        # entry service
+        service_entry = self.theme.entry(popup, font=("Segoe UI", 12))
+        service_entry.pack(pady=(0, 10))
+
+        # label username
+        self.theme.label(
+            popup, t("LABEL_USERNAME"), ("Segoe UI", 12), fg="#889082"
+        ).pack(pady=(0, 2))
+
+        # entry username
+        username_entry = self.theme.entry(popup, font=("Segoe UI", 12))
+        username_entry.pack(pady=(0, 10))
+
+        # label password
+        self.theme.label(
+            popup, t("LABEL_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+        ).pack(pady=(0, 2))
+
+        # entry password
+        password_entry = self.theme.entry(popup, show="*", font=("Segoe UI", 12))
+        password_entry.pack(pady=(0, 10))
+
+        # label re-type password
+        self.theme.label(
+            popup, t("LABEL_REENTER_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+        ).pack(pady=(0, 2))
+
+        # entry confirm password
+        password_entry2 = self.theme.entry(popup, show="*", font=("Segoe UI", 12))
+        password_entry2.pack(pady=(0, 10))
+
+        # button add password
+        btn_add = self.theme.button(
+            popup,
+            on_ok,
+            t("BTN_OK"),
+            font=("Segoe UI", 12, "bold"),
+            bg="#4F6EF7",
+            width=18,
+            height=1,
+        )
+        btn_add.pack(pady=10)
+
+        # button generate password
+        btn_generate_password = self.theme.button(
+            popup,
+            lambda: on_generate(),
+            t("BTN_GENERATE_PASSWORD"),
+            font=("Segoe UI", 12, "bold"),
+            bg="#2F3355",
+            width=18,
+            height=1,
+        )
+        btn_generate_password.pack(pady=10)
 
     def load_data(self, tree):
         passwords = db.read_table()
