@@ -15,7 +15,6 @@ class GUI:
 
     def __init__(self, debug=False):
         self.debug = debug
-        print(self.debug)
 
         self.root = tk.Tk()
         self.root.configure(bg="#1A1D2E")
