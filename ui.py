@@ -97,18 +97,6 @@ class GUI:
         for widget in self.root.winfo_children():
             widget.destroy()
 
-        self.center_window(self.root, self.width, self.height)
-        self.root.title(t("TITLE_PASSWORD_MANAGER"))
-        self.theme.label(
-            self.root, t("TITLE_PASSWORD_MANAGER"), ("Segoe UI", 18, "bold")
-        ).pack(pady=10)
-
-        self.theme.label(
-            self.root, t("LABEL_MASTER_PASSWORD"), ("Segoe UI", 12), fg="#889082"
-        ).pack(pady=5)
-        txt_password = self.theme.entry(self.root, show="*")
-        txt_password.pack()
-
         def check_totp():
             popup = tk.Toplevel()
             popup.title(t("TITLE_TOTP"))
@@ -180,14 +168,32 @@ class GUI:
                     t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
                 )
 
+        #
+        self.center_window(self.root, self.width, self.height)
+        self.root.title(t("TITLE_PASSWORD_MANAGER"))
+
+        # label title
+        self.theme.label(
+            self.root, t("TITLE_PASSWORD_MANAGER"), ("Segoe UI", 18, "bold")
+        ).pack(pady=10)
+
+        # label type password
+        self.theme.label(
+            self.root, t("LABEL_MASTER_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+        ).pack(pady=(0, 5))
+
+        # entry password
+        txt_password = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
+        txt_password.pack()
+
         # button login
         btn_login = self.theme.button(
             self.root,
             verify_master_password,
             t("BTN_LOGIN"),
-            font=("Segoe UI", 9, "bold"),
+            font=("Segoe UI", 12, "bold"),
             bg="#4F6EF7",
-            width=17,
+            width=18,
             height=1,
         )
         btn_login.pack(pady=10)
@@ -197,29 +203,32 @@ class GUI:
             self.root,
             lambda: self.create_master_password(self.root),
             t("BTN_CREATE_MASTER_USER"),
+            font=("Segoe UI", 11, "bold"),
             bg="#2F3355",
         )
-        btn_create_master.pack(pady=10)
+        btn_create_master.pack(pady=(10, 0))
 
         # button add 2FA
         btn_add_2FA = self.theme.button(
             self.root,
             lambda: add_2FA(),
             t("BTN_ENABLE_2FA"),
+            font=("Segoe UI", 11, "bold"),
             bg="#2F3355",
         )
-        btn_add_2FA.pack(pady=0)
+        btn_add_2FA.pack(pady=(5, 5))
 
         # button language
         btn_lang = self.theme.button(
             self.root,
             lambda: self.toggle_lang(),
             t("FR/EN"),
+            font=("Segoe UI", 11, "bold"),
             bg="#2F3355",
-            width=5,
+            width=6,
             height=2,
         )
-        btn_lang.pack(side="right", padx=20)
+        btn_lang.pack(side="right", padx=20, pady=(0,10))
 
         self.root.mainloop()
 
@@ -519,7 +528,12 @@ class GUI:
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("Treeview.Heading", background="#2F3355", foreground="#E5E7EB")
-        style.configure("Treeview", fieldbackground="#1A1D2E", background="#1A1D2E", foreground="#E5E7EB")
+        style.configure(
+            "Treeview",
+            fieldbackground="#1A1D2E",
+            background="#1A1D2E",
+            foreground="#E5E7EB",
+        )
         self.tree = ttk.Treeview(
             self.root,
             columns=("id", "Service", "Username", "Password"),
