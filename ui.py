@@ -291,7 +291,7 @@ class GUI:
                 fg="#889082",
             ).pack(pady=(0, 5))
 
-            # entry confirm password
+            # entry retype password
             pw_entry2 = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
             pw_entry2.pack()
 
@@ -389,12 +389,12 @@ class GUI:
         password_entry = self.theme.entry(popup, show="*", font=("Segoe UI", 12))
         password_entry.pack(pady=(0, 10))
 
-        # label re-type password
+        # label retype password
         self.theme.label(
             popup, t("LABEL_REENTER_PASSWORD"), ("Segoe UI", 12), fg="#889082"
         ).pack(pady=(0, 2))
 
-        # entry confirm password
+        # entry retype password
         password_entry2 = self.theme.entry(popup, show="*", font=("Segoe UI", 12))
         password_entry2.pack(pady=(0, 10))
 
@@ -527,22 +527,6 @@ class GUI:
                 )
 
         def on_change_password():
-            popup = tk.Toplevel()
-            popup.title(t("TITLE_CHANGE_PASSWORD"))
-            self.center_window(popup, 300, 250)
-
-            tk.Label(popup, text=t("LABEL_OLD_PASSWORD")).pack(pady=5)
-            old_password_entry = tk.Entry(popup, show="*")
-            old_password_entry.pack()
-
-            tk.Label(popup, text=t("LABEL_NEW_PASSWORD")).pack(pady=5)
-            new_password_entry = tk.Entry(popup, show="*")
-            new_password_entry.pack()
-
-            tk.Label(popup, text=t("LABEL_REENTER_PASSWORD")).pack(pady=5)
-            new_password_entry2 = tk.Entry(popup, show="*")
-            new_password_entry2.pack()
-
             # TODO: fix code repetition
             def on_ok():
                 old_password = old_password_entry.get()
@@ -598,7 +582,56 @@ class GUI:
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                     popup.destroy()
 
-            tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
+            popup = tk.Toplevel()
+            popup.configure(bg="#1A1D2E")
+            self.center_window(popup, 300, 300)
+            popup.title(t("TITLE_CHANGE_PASSWORD"))
+
+            # label old password
+            self.theme.label(
+                popup, t("LABEL_OLD_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+            ).pack(pady=(5, 2))
+
+            # entry old password
+            old_password_entry = self.theme.entry(
+                popup, show="*", font=("Segoe UI", 12)
+            )
+            old_password_entry.pack(pady=(0, 10))
+
+            # label new password
+            self.theme.label(
+                popup, t("LABEL_NEW_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+            ).pack(pady=(0, 2))
+
+            # entry new password
+            new_password_entry = self.theme.entry(
+                popup, show="*", font=("Segoe UI", 12)
+            )
+            new_password_entry.pack(pady=(0, 10))
+
+            # label re-type new password
+            self.theme.label(
+                popup, t("LABEL_REENTER_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+            ).pack(pady=(0, 2))
+
+            # entry re-type new password
+            new_password_entry2 = self.theme.entry(
+                popup, show="*", font=("Segoe UI", 12)
+            )
+            new_password_entry2.pack(pady=(0, 10))
+
+            btn_change_password = self.theme.button(
+                popup,
+                on_ok,
+                t("BTN_OK"),
+                font=("Segoe UI", 12, "bold"),
+                bg="#4F6EF7",
+                width=18,
+                height=1,
+            )
+            btn_change_password.pack(pady=10)
+
+            # tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
 
         # treeview
         style = ttk.Style()
@@ -639,7 +672,6 @@ class GUI:
             msg.showinfo(t("LABEL_PASSWORD"), real_password)
 
         # double click to show
-        # todo: change to copy (30s)
         self.tree.bind("<Double-1>", show_password)
 
         # TODO: edit option
