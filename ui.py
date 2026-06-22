@@ -13,7 +13,10 @@ from ui_theme import Theme
 
 class GUI:
 
-    def __init__(self):
+    def __init__(self, debug=False):
+        self.debug = debug
+        print(self.debug)
+
         self.root = tk.Tk()
         self.root.configure(bg="#1A1D2E")
         self.theme = Theme()
@@ -34,8 +37,8 @@ class GUI:
         self.root.bind_all("<MouseWheel>", self.update_activity)
 
         self.crypto = Crypto()
-        self.auth = Auth(self.crypto)
-        self.OTP = OTP(self.crypto)
+        self.auth = Auth(self.debug, self.crypto)
+        self.OTP = OTP(self.debug, self.crypto)
 
     def run(self):
         self.page_login()
@@ -56,11 +59,14 @@ class GUI:
         self.last_activity = time.time()
 
     def check_lock(self):
+        if self.debug:
+            return
+        
         if not self.locked:
             idle_time = time.time() - self.last_activity
 
             # seconds
-            if idle_time >= 6000:
+            if idle_time >= 60:
                 for widget in self.root.winfo_children():
                     widget.destroy()
                 self.clear_memory()

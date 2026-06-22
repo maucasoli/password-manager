@@ -7,12 +7,13 @@ import pyotp
 
 class Auth:
 
-    def __init__(self, crypto):
+    def __init__(self, debug, crypto):
+        self.debug = debug
         self.crypto = crypto
         self.ph = PasswordHasher()
 
-    def create_master_password(self, password, enabled=False):
-        if enabled:
+    def create_master_password(self, password):
+        if not self.debug:
             if len(password) < 8:
                 return "Password must be at least 8 characters long."
             if not re.search(r"[a-z]", password):

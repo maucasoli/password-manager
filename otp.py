@@ -8,7 +8,8 @@ import qrcode
 
 class OTP:
 
-    def __init__(self, crypto):
+    def __init__(self, debug, crypto):
+        self.debug = debug
         self.crypto = crypto
         self.totp = None
         self.secret = None
@@ -23,7 +24,8 @@ class OTP:
     def generate_totp(self):
         secret = self.crypto.decrypt(self.secret).decode("utf-8")
         self.totp = pyotp.TOTP(secret)
-        print("TOTP:", self.totp.now())
+        if self.debug:
+            print("TOTP:", self.totp.now())
         return self.totp.now()
 
     def generate_uri(self):
