@@ -9,11 +9,16 @@ from otp import OTP
 import time
 from translations import t, set_lang
 from ui_theme import Theme
+import os
 
 
 class GUI:
 
     def __init__(self, debug=False):
+        # if debug:
+        # no password requirements
+        # print TOTP to terminal
+        # no auto-lock from idle
         self.debug = debug
 
         self.root = tk.Tk()
@@ -165,7 +170,12 @@ class GUI:
                 # derive key on login
                 password_bytes = master_password.encode("utf-8")
                 salt_bytes = db.get_salt()
-                self.crypto.derive_key(password_bytes, salt_bytes)
+                kek = self.auth.derive_kek(password_bytes, salt_bytes)
+
+                # retrieve dek from database and store in memory
+                encrypted_dek = db.get_dek()
+                dek = self.auth.decrypt_dek(encrypted_dek, kek)
+                self.crypto.set_dek(dek)
 
                 if db.get_mfa():
                     self.OTP.set_otp_secret(db.get_otp_secret())
@@ -182,12 +192,23 @@ class GUI:
             if self.auth.verify_master_password(master_password):
                 response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
                 if response:
+                    # derive KEK
                     password_bytes = master_password.encode("utf-8")
                     salt_bytes = db.get_salt()
-                    self.crypto.derive_key(password_bytes, salt_bytes)
+                    kek = self.auth.derive_kek(password_bytes, salt_bytes)
+
+                    # decrypt and set DEK
+                    encrypted_dek = db.get_dek().decode("utf-8")
+                    dek = self.auth.decrypt_dek(encrypted_dek, kek)
+                    self.crypto.set_dek(dek)
+
+                    # create and set otp secret
                     encrypted_otp = self.auth.create_otp_secret()
                     self.OTP.set_otp_secret(encrypted_otp)
+
+                    # save to database
                     db.set_otp_secret(encrypted_otp)
+
                     self.show_qrcode()
             else:
                 tk.messagebox.showerror(
@@ -271,14 +292,25 @@ class GUI:
                 result = self.auth.create_master_password(masterpw)
                 # check if result is tuple or error string
                 if isinstance(result, tuple):
-                    # derive key on register
-                    salt_bytes = self.auth.create_salt()
-                    self.crypto.derive_key(masterpw.encode("utf-8"), salt_bytes)
-
                     _, masterpw_hash = result
+
+                    # derive KEK from master password and salt
+                    salt_bytes = self.auth.create_salt()
+                    kek = self.auth.derive_kek(masterpw.encode("utf-8"), salt_bytes)
+
+                    # create DEK and encrypt with KEK
+                    dek = os.urandom(32)
+                    encrypted_dek = self.auth.encrypt_dek(dek, kek)
+
+                    # set DEK to create otp secret
+                    self.crypto.set_dek(dek)
                     encrypted_otp = self.auth.create_otp_secret()
                     self.OTP.set_otp_secret(encrypted_otp)
-                    db.create_master_password(masterpw_hash, encrypted_otp)
+
+                    # save to database
+                    db.create_master_password(
+                        masterpw_hash, encrypted_dek, encrypted_otp
+                    )
                     db.set_salt(salt_bytes)
 
                     response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
@@ -575,35 +607,64 @@ class GUI:
                         result = self.auth.create_master_password(new_password)
                         # check if result is tuple or error string
                         if isinstance(result, tuple):
-
-                            # decrypt
-                            password_list = db.get_all_passwords()
-                            for idx, (id, pw) in enumerate(password_list):
-                                real_password = self.crypto.decrypt(pw).decode("utf-8")
-                                password_list[idx] = (id, real_password)
-                            encrypted_otp = db.get_otp_secret()
-                            decrypted_otp = self.crypto.decrypt(encrypted_otp).decode(
-                                "utf-8"
-                            )
-
-                            # derive new key
-                            salt_bytes = self.auth.create_salt()
-                            self.crypto.derive_key(
-                                new_password.encode("utf-8"), salt_bytes
-                            )
-
-                            # encrypt
-                            for _, (id, pw) in enumerate(password_list):
-                                pw_bytes = pw.encode("utf-8")
-                                encrypted_pw = self.crypto.encrypt(pw_bytes)
-                                db.update_password(id, encrypted_pw)
-                            otp_bytes = decrypted_otp.encode("utf-8")
-                            encrypted_otp = self.crypto.encrypt(otp_bytes)
-                            db.set_otp_secret(encrypted_otp)
-
                             _, masterpw_hash = result
-                            db.create_master_password(masterpw_hash, encrypted_otp)
-                            db.set_salt(salt_bytes)
+
+                            # get current KEK from old password and salt
+                            salt_bytes = db.get_salt()
+                            old_password_bytes = old_password.encode("utf-8")
+                            old_kek = self.auth.derive_kek(
+                                old_password_bytes, salt_bytes
+                            )
+
+                            # decrypt DEK and otp secret
+                            encrypted_dek = db.get_dek()
+                            dek = self.auth.decrypt_dek(encrypted_dek, old_kek)
+                            self.crypto.set_dek(dek)
+                            encrypted_otp = db.get_otp_secret()
+                            otp_secret = self.crypto.decrypt(encrypted_otp)
+
+                            # create new KEK and salt
+                            new_password_bytes = new_password.encode("utf-8")
+                            new_salt_bytes = self.auth.create_salt()
+                            new_kek = self.auth.derive_kek(
+                                new_password_bytes, new_salt_bytes
+                            )
+
+                            # encrypt DEK and otp secret with new KEK
+                            encrypted_dek = self.auth.encrypt_dek(dek, new_kek)
+                            encrypted_otp = self.crypto.encrypt(otp_secret)
+
+                            # # decrypt
+                            # password_list = db.get_all_passwords()
+                            # for idx, (id, pw) in enumerate(password_list):
+                            #     real_password = self.crypto.decrypt(pw).decode("utf-8")
+                            #     password_list[idx] = (id, real_password)
+                            # encrypted_otp = db.get_otp_secret()
+                            # decrypted_otp = self.crypto.decrypt(encrypted_otp).decode(
+                            #     "utf-8"
+                            # )
+
+                            # # derive new key
+                            # salt_bytes = self.auth.create_salt()
+                            # self.crypto.derive_kek(
+                            #     new_password.encode("utf-8"), salt_bytes
+                            # )
+
+                            # # encrypt
+                            # for _, (id, pw) in enumerate(password_list):
+                            #     pw_bytes = pw.encode("utf-8")
+                            #     encrypted_pw = self.crypto.encrypt(pw_bytes)
+                            #     db.update_password(id, encrypted_pw)
+                            # otp_bytes = decrypted_otp.encode("utf-8")
+                            # encrypted_otp = self.crypto.encrypt(otp_bytes)
+                            # db.set_otp_secret(encrypted_otp)
+
+                            # save to database
+                            db.create_master_password(
+                                masterpw_hash, encrypted_dek, encrypted_otp
+                            )
+                            db.set_salt(new_salt_bytes)
+
                             msg.showinfo(
                                 t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
                             )

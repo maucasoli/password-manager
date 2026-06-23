@@ -1,5 +1,4 @@
 import pyotp
-import database as db
 import qrcode
 from io import BytesIO
 from PIL import ImageTk

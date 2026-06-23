@@ -1,8 +1,11 @@
+import base64
 import database as db
 from argon2 import PasswordHasher
 import secrets
 import re
 import pyotp
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 
 class Auth:
@@ -11,6 +14,23 @@ class Auth:
         self.debug = debug
         self.crypto = crypto
         self.ph = PasswordHasher()
+
+    # from master password
+    def derive_kek(self, password_bytes, salt_bytes):
+        memory_cost = 2**18 if self.debug else 2**21
+
+        kdf = Argon2id(
+            salt=salt_bytes, length=32, iterations=1, lanes=4, memory_cost=memory_cost
+        )
+        return kdf.derive(password_bytes)
+
+    def encrypt_dek(self, dek, kek):
+        f = Fernet(base64.urlsafe_b64encode(kek))
+        return f.encrypt(dek)
+
+    def decrypt_dek(self, encrypted_dek, kek):
+        f = Fernet(base64.urlsafe_b64encode(kek))
+        return f.decrypt(encrypted_dek)
 
     def create_master_password(self, password):
         if not self.debug:

@@ -26,6 +26,11 @@ class Theme:
         return tk.Entry(parent, fg=fg, bg=bg, **kwargs)
 
     def button(self, parent, command, text, fg=None, bg=None, **kwargs):
+        # prevent None on console when clicking buttons
+        def on_return(event):
+            btn.invoke()
+            return "break"
+
         if fg is None:
             fg = self.fg
 
@@ -43,6 +48,6 @@ class Theme:
             **kwargs
         )
 
-        btn.bind("<Return>", lambda event: btn.invoke())
+        btn.bind("<Return>", on_return)
 
         return btn

@@ -14,9 +14,10 @@ def create_tables():
             "CREATE TABLE IF NOT EXISTS master ("
             "id INTEGER primary key,"
             "password_hash TEXT,"
-            "mfa_enabled INTEGER DEFAULT 0,"
             "salt BLOB,"
+            "encrypted_dek BLOB,"
             "otp_secret TEXT,"
+            "mfa_enabled INTEGER DEFAULT 0,"
             "language TEXT DEFAULT 'en'"
             ")"
         )
@@ -74,12 +75,12 @@ def check_master_password():
             return False
 
 
-def create_master_password(password, otp_secret):
+def create_master_password(password, encrypted_dek, otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "UPDATE master SET password_hash = (?), otp_secret = (?) WHERE id = 1",
-            (password, otp_secret),
+            "UPDATE master SET password_hash = (?), encrypted_dek = (?), otp_secret = (?) WHERE id = 1",
+            (password, encrypted_dek, otp_secret),
         )
         con.commit()
 
@@ -184,6 +185,14 @@ def get_salt():
         cur.execute("SELECT salt FROM master WHERE id = 1")
         salt = cur.fetchone()[0]
         return salt
+
+
+def get_dek():
+    with connect() as con:
+        cur = con.cursor()
+        cur.execute("SELECT encrypted_dek FROM master WHERE id = 1")
+        dek = cur.fetchone()[0]
+        return dek
 
 
 def exist_master_user():
