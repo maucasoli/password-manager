@@ -17,12 +17,14 @@ class Crypto:
         key = base64.urlsafe_b64encode(dek)
         self.fernet = Fernet(key)
 
+    # data encryption
     def encrypt(self, password_bytes):
         if self.fernet is None:
             raise ValueError("Encryption key missing")
         encrypted_password = self.fernet.encrypt(password_bytes)
         return encrypted_password
 
+    # data decryption
     def decrypt(self, encrypted_password):
         if self.fernet is None:
             raise ValueError("Encryption key missing")

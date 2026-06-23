@@ -32,9 +32,9 @@ class GUI:
         self.lang = db.get_language()
         set_lang(self.lang)
 
+        # for auto-lock
         self.last_activity = time.time()
         self.locked = False
-
         self.root.bind_all("<Key>", self.update_activity)
         self.root.bind_all("<Button>", self.update_activity)
         self.root.bind_all("<Motion>", self.update_activity)
@@ -47,7 +47,7 @@ class GUI:
     def run(self):
         self.page_login()
 
-    # button in login page
+    # button language
     def toggle_lang(self):
         self.lang = "fr" if self.lang == "en" else "en"
         set_lang(self.lang)
@@ -167,12 +167,12 @@ class GUI:
             # check if master password is correct
             if self.auth.verify_master_password(master_password):
 
-                # derive key on login
+                # derive KEK on login
                 password_bytes = master_password.encode("utf-8")
                 salt_bytes = db.get_salt()
                 kek = self.auth.derive_kek(password_bytes, salt_bytes)
 
-                # retrieve dek from database and store in memory
+                # retrieve DEK from database and store in memory
                 encrypted_dek = db.get_dek()
                 dek = self.auth.decrypt_dek(encrypted_dek, kek)
                 self.crypto.set_dek(dek)
@@ -634,31 +634,6 @@ class GUI:
                             encrypted_dek = self.auth.encrypt_dek(dek, new_kek)
                             encrypted_otp = self.crypto.encrypt(otp_secret)
 
-                            # # decrypt
-                            # password_list = db.get_all_passwords()
-                            # for idx, (id, pw) in enumerate(password_list):
-                            #     real_password = self.crypto.decrypt(pw).decode("utf-8")
-                            #     password_list[idx] = (id, real_password)
-                            # encrypted_otp = db.get_otp_secret()
-                            # decrypted_otp = self.crypto.decrypt(encrypted_otp).decode(
-                            #     "utf-8"
-                            # )
-
-                            # # derive new key
-                            # salt_bytes = self.auth.create_salt()
-                            # self.crypto.derive_kek(
-                            #     new_password.encode("utf-8"), salt_bytes
-                            # )
-
-                            # # encrypt
-                            # for _, (id, pw) in enumerate(password_list):
-                            #     pw_bytes = pw.encode("utf-8")
-                            #     encrypted_pw = self.crypto.encrypt(pw_bytes)
-                            #     db.update_password(id, encrypted_pw)
-                            # otp_bytes = decrypted_otp.encode("utf-8")
-                            # encrypted_otp = self.crypto.encrypt(otp_bytes)
-                            # db.set_otp_secret(encrypted_otp)
-
                             # save to database
                             db.create_master_password(
                                 masterpw_hash, encrypted_dek, encrypted_otp
@@ -731,8 +706,6 @@ class GUI:
                 height=1,
             )
             btn_change_password.pack(pady=10)
-
-            # tk.Button(popup, text=t("BTN_OK"), command=on_ok).pack(pady=10)
 
         # treeview
         style = ttk.Style()

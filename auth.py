@@ -54,18 +54,15 @@ class Auth:
         # create otp secret and encrypt it
         otp_secret = pyotp.random_base32().encode("utf-8")
         encrypted_otp = self.crypto.encrypt(otp_secret)
-
         return encrypted_otp
 
     def create_salt(self):
         # create salt for argon
         salt_bytes = secrets.token_bytes(32)
-
         return salt_bytes
 
     def verify_master_password(self, input_password):
         masterpw = db.check_master_password()
-
         try:
             if self.ph.verify(masterpw, input_password):
                 return True
