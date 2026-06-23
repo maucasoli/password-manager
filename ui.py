@@ -88,6 +88,7 @@ class GUI:
         popup = tk.Toplevel()
         popup.title(t("TITLE_QR_CODE"))
         self.center_window(popup, 300, 250)
+        popup.focus_set()
 
         photo = self.OTP.generate_uri()
         label = tk.Label(popup, image=photo)
@@ -96,6 +97,7 @@ class GUI:
 
         db.set_mfa()
 
+        popup.bind("<Return>", lambda e: popup.destroy())
         popup.wait_window(popup)
 
     def page_login(self):
