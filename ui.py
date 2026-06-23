@@ -60,7 +60,7 @@ class GUI:
     def check_lock(self):
         if self.debug:
             return
-        
+
         if not self.locked:
             idle_time = time.time() - self.last_activity
 
@@ -103,6 +103,9 @@ class GUI:
             widget.destroy()
 
         def check_totp():
+            # list to keep scope
+            result = [False]
+
             def on_otp():
                 input_totp = totp_entry.get()
                 if self.OTP.verify_totp(input_totp):
@@ -122,13 +125,16 @@ class GUI:
             self.center_window(popup, 300, 200)
 
             # label TOTP
-            self.theme.label(
-                popup, t("TITLE_TOTP"), ("Segoe UI", 18, "bold")
-            ).pack(pady=10)
+            self.theme.label(popup, t("TITLE_TOTP"), ("Segoe UI", 18, "bold")).pack(
+                pady=10
+            )
 
             # entry TOTP
             totp_entry = self.theme.entry(popup, font=("Segoe UI", 12))
             totp_entry.pack(pady=(0, 10))
+            # allow enter button
+            totp_entry.bind("<Return>", lambda e: on_otp())
+            totp_entry.focus_set()
 
             # button verify TOTP
             btn_verify_totp = self.theme.button(
@@ -144,18 +150,12 @@ class GUI:
 
             totp = self.OTP.generate_totp()
 
-            # list to keep scope
-            result = [False]
-
-
-            # allow enter button
-            totp_entry.bind("<Return>", lambda e: on_otp())
-
             popup.wait_window(popup)
 
             return result[0]
 
-        def verify_master_password():
+        # event: for <return> button on login
+        def verify_master_password(event=None):
             master_password = txt_password.get()
             # check if master password is correct
             if self.auth.verify_master_password(master_password):
@@ -209,6 +209,9 @@ class GUI:
         # entry password
         txt_password = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
         txt_password.pack()
+        # allow enter button
+        txt_password.bind("<Return>", verify_master_password)
+        txt_password.focus_set()
 
         # button login
         btn_login = self.theme.button(
@@ -222,7 +225,7 @@ class GUI:
         )
         btn_login.pack(pady=10)
 
-        # button create master user
+        # button create user
         btn_create_master = self.theme.button(
             self.root,
             lambda: self.create_master_password(self.root),
@@ -257,7 +260,7 @@ class GUI:
         self.root.mainloop()
 
     def create_master_password(self, root):
-        def on_ok():
+        def on_ok(event=None):
             masterpw = pw_entry.get()
             masterpw2 = pw_entry2.get()
 
@@ -306,6 +309,7 @@ class GUI:
             # entry password
             pw_entry = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
             pw_entry.pack(pady=(0, 10))
+            pw_entry.focus_set()
 
             # label retype password
             self.theme.label(
@@ -318,6 +322,8 @@ class GUI:
             # entry retype password
             pw_entry2 = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
             pw_entry2.pack(pady=(0, 10))
+            # allow enter button
+            pw_entry2.bind("<Return>", on_ok)
 
             # button create user
             btn_create = self.theme.button(
@@ -348,7 +354,7 @@ class GUI:
             self.page_login()
 
     def add_password(self):
-        def on_ok():
+        def on_ok(event=None):
             service = service_entry.get()
             username = username_entry.get()
             password = password_entry.get()
@@ -394,6 +400,7 @@ class GUI:
         # entry service
         service_entry = self.theme.entry(popup, font=("Segoe UI", 12))
         service_entry.pack(pady=(0, 10))
+        service_entry.focus_set()
 
         # label username
         self.theme.label(
@@ -421,6 +428,8 @@ class GUI:
         # entry retype password
         password_entry2 = self.theme.entry(popup, show="*", font=("Segoe UI", 12))
         password_entry2.pack(pady=(0, 10))
+        # allow enter button
+        password_entry2.bind("<Return>", on_ok)
 
         # button add password
         btn_add = self.theme.button(
@@ -502,6 +511,7 @@ class GUI:
             height=2,
         )
         btn_add.pack(side="left", padx=(5, 0), pady=(2, 2))
+        btn_add.focus_set()
 
         # button remove 2FA
         btn_remove_2fa = self.theme.button(
@@ -552,7 +562,7 @@ class GUI:
 
         def on_change_password():
             # TODO: fix code repetition
-            def on_ok():
+            def on_ok(event=None):
                 old_password = old_password_entry.get()
                 new_password = new_password_entry.get()
                 new_password2 = new_password_entry2.get()
@@ -622,6 +632,7 @@ class GUI:
                 popup, show="*", font=("Segoe UI", 12)
             )
             old_password_entry.pack(pady=(0, 10))
+            old_password_entry.focus_set()
 
             # label new password
             self.theme.label(
@@ -644,6 +655,8 @@ class GUI:
                 popup, show="*", font=("Segoe UI", 12)
             )
             new_password_entry2.pack(pady=(0, 10))
+            # allow enter button
+            new_password_entry2.bind("<Return>", on_ok)
 
             btn_change_password = self.theme.button(
                 popup,

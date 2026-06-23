@@ -32,7 +32,7 @@ class Theme:
         if bg is None:
             bg = self.bg
 
-        return tk.Button(
+        btn = tk.Button(
             parent,
             command=command,
             text=text,
@@ -42,3 +42,7 @@ class Theme:
             bd=0,
             **kwargs
         )
+
+        btn.bind("<Return>", lambda event: btn.invoke())
+
+        return btn
