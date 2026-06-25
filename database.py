@@ -63,17 +63,6 @@ def get_otp_secret():
         return row[0]
 
 
-def check_master_password():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT password_hash FROM master WHERE id = 1")
-        try:
-            master_password = cur.fetchone()[0]
-            return master_password
-        except:
-            return False
-
-
 def create_master_password(encrypted_dek, otp_secret):
     with connect() as con:
         cur = con.cursor()
@@ -126,7 +115,7 @@ def set_otp_secret(otp_secret):
         con.commit()
 
 
-def read_table():
+def read_table_passwords():
     with connect() as con:
         cur = con.cursor()
         cur.execute("SELECT id, service, username FROM passwords")
@@ -141,24 +130,6 @@ def get_password(id):
         cur.execute("SELECT password FROM passwords WHERE id = (?)", (id,))
         password = cur.fetchone()[0]
         return password
-
-
-# return [(id, password), ...]
-def get_all_passwords():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT id, password FROM passwords")
-        password = cur.fetchall()
-        return password
-
-
-def update_password(id, new_password):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute(
-            "UPDATE passwords SET password = (?) WHERE id = (?)", (new_password, id)
-        )
-        con.commit()
 
 
 def add_password(service, username, password):
@@ -197,7 +168,5 @@ def get_dek():
 def exist_master_user():
     with connect() as con:
         cur = con.cursor()
-        cur.execute(
-            "SELECT salt FROM master WHERE id = 1 AND salt IS NOT NULL"
-        )
+        cur.execute("SELECT salt FROM master WHERE id = 1 AND salt IS NOT NULL")
         return cur.fetchone() is not None

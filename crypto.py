@@ -1,6 +1,6 @@
-import base64
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import os
+
 
 class Crypto:
 
@@ -16,28 +16,22 @@ class Crypto:
         self.dek = dek
         self.aesgcm = AESGCM(dek)
 
-    # for data encryption
+    # for data
     def encrypt(self, password_bytes):
         if self.aesgcm is None:
             raise ValueError("Encryption key missing")
-        
+
         # number used once
         nonce = os.urandom(12)
         encrypted_password = self.aesgcm.encrypt(nonce, password_bytes, None)
+        return nonce + encrypted_password
 
-        # convert bytes to string
-        return base64.b64encode(nonce + encrypted_password)
-
-    # for data decryption
-    def decrypt(self, encrypted_password):
+    # db columns already in BLOB
+    def decrypt(self, ciphertext):
         if self.aesgcm is None:
             raise ValueError("Encryption key missing")
-        
-        # decode before slicing
-        raw = base64.b64decode(encrypted_password)
-        nonce = raw[:12]
-        ciphertext = raw[12:]
-        
-        password_bytes = self.aesgcm.decrypt(nonce, ciphertext, None)
+
+        nonce = ciphertext[:12]
+        encrypted_password = ciphertext[12:]
+        password_bytes = self.aesgcm.decrypt(nonce, encrypted_password, None)
         return password_bytes
-    

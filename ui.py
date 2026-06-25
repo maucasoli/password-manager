@@ -192,7 +192,7 @@ class GUI:
                 self.page_passwords(self.root)
 
         def add_2FA():
-             # derive KEK
+            # derive KEK
             master_password = txt_password.get()
             password_bytes = master_password.encode("utf-8")
             salt_bytes = db.get_salt()
@@ -205,13 +205,15 @@ class GUI:
             try:
                 dek = self.auth.decrypt_dek(encrypted_dek, kek)
             except Exception:
-                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD"))
+                tk.messagebox.showerror(
+                    t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
+                )
                 self.page_login()
                 return
-            
+
             # store DEK in memory
             self.crypto.set_dek(dek)
-    
+
             # ask user if they want to configure 2FA
             response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
             if response:
@@ -297,12 +299,8 @@ class GUI:
             masterpw2 = pw_entry2.get()
 
             if masterpw == masterpw2:
-                # return a tuple with true and hash
                 result = self.auth.create_master_password(masterpw)
-                # check if result is tuple or error string
-                if isinstance(result, tuple):
-                    _, masterpw_hash = result
-
+                if result is True:
                     # derive KEK from master password and salt
                     salt_bytes = self.auth.create_salt()
                     kek = self.auth.derive_kek(masterpw.encode("utf-8"), salt_bytes)
@@ -497,7 +495,7 @@ class GUI:
         btn_generate_password.pack(pady=10)
 
     def load_data(self, tree):
-        passwords = db.read_table()
+        passwords = db.read_table_passwords()
 
         # clean table
         for item in tree.get_children():
@@ -624,12 +622,8 @@ class GUI:
                     return
 
                 if new_password == new_password2:
-                    # return a tuple with true and hash
                     result = self.auth.create_master_password(new_password)
-                    # check if result is tuple or error string
-                    if isinstance(result, tuple):
-                        _, masterpw_hash = result
-
+                    if result is True:
                         # decrypt DEK and otp secret
                         encrypted_otp = db.get_otp_secret()
                         otp_secret = self.crypto.decrypt(encrypted_otp)

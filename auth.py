@@ -1,6 +1,4 @@
-import base64
 import database as db
-from argon2 import PasswordHasher
 import secrets
 import re
 import pyotp
@@ -8,14 +6,14 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 import os
 
+
 class Auth:
 
     def __init__(self, debug, crypto):
         self.debug = debug
         self.crypto = crypto
-        self.ph = PasswordHasher()
 
-    # from master password
+    # derive from master password
     def derive_kek(self, password_bytes, salt_bytes):
         memory_cost = 2**18 if self.debug else 2**21
 
@@ -29,16 +27,15 @@ class Auth:
         aesgcm = AESGCM(kek)
         nonce = os.urandom(12)
         encrypted_dek = aesgcm.encrypt(nonce, dek, None)
-        return base64.b64encode(nonce + encrypted_dek)
+        return nonce + encrypted_dek
 
-    def decrypt_dek(self, encrypted_dek, kek):
+    # db columns already in BLOB
+    def decrypt_dek(self, ciphertext, kek):
         aesgcm = AESGCM(kek)
-        raw = base64.b64decode(encrypted_dek)
-        nonce = raw[:12]
-        ciphertext = raw[12:]
-        dek = aesgcm.decrypt(nonce, ciphertext, None)
+        nonce = ciphertext[:12]
+        encrypted_dek = ciphertext[12:]
+        dek = aesgcm.decrypt(nonce, encrypted_dek, None)
         return dek
-
 
     def create_master_password(self, password):
         if not self.debug:
@@ -52,27 +49,17 @@ class Auth:
                 return "Password must contain at least one number."
             if not re.search(r"[!@#$%&*()_?-]", password):
                 return "Password must contain at least one special character."
-
-        # hash master password
-        hash = self.ph.hash(password)
-
-        return True, hash
+        return True
 
     def create_otp_secret(self):
-        # create otp secret and encrypt it
         otp_secret = pyotp.random_base32().encode("utf-8")
         encrypted_otp = self.crypto.encrypt(otp_secret)
         return encrypted_otp
 
     def create_salt(self):
-        # create salt for argon
         salt_bytes = secrets.token_bytes(32)
         return salt_bytes
 
+    # TODO: to implement derive KEK and verify if it decrypts DEK
     def verify_master_password(self, input_password):
-        masterpw = db.check_master_password()
-        try:
-            if self.ph.verify(masterpw, input_password):
-                return True
-        except:
-            return False
+        pass
