@@ -4,9 +4,9 @@ from argon2 import PasswordHasher
 import secrets
 import re
 import pyotp
-from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
-
+import os
 
 class Auth:
 
@@ -24,13 +24,21 @@ class Auth:
         )
         return kdf.derive(password_bytes)
 
+    # not for data
     def encrypt_dek(self, dek, kek):
-        f = Fernet(base64.urlsafe_b64encode(kek))
-        return f.encrypt(dek)
+        aesgcm = AESGCM(kek)
+        nonce = os.urandom(12)
+        encrypted_dek = aesgcm.encrypt(nonce, dek, None)
+        return base64.b64encode(nonce + encrypted_dek)
 
     def decrypt_dek(self, encrypted_dek, kek):
-        f = Fernet(base64.urlsafe_b64encode(kek))
-        return f.decrypt(encrypted_dek)
+        aesgcm = AESGCM(kek)
+        raw = base64.b64decode(encrypted_dek)
+        nonce = raw[:12]
+        ciphertext = raw[12:]
+        dek = aesgcm.decrypt(nonce, ciphertext, None)
+        return dek
+
 
     def create_master_password(self, password):
         if not self.debug:

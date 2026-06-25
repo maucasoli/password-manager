@@ -15,7 +15,7 @@ def create_tables():
             "id INTEGER primary key,"
             "salt BLOB,"
             "encrypted_dek BLOB,"
-            "otp_secret TEXT,"
+            "otp_secret BLOB,"
             "mfa_enabled INTEGER DEFAULT 0,"
             "language TEXT DEFAULT 'en'"
             ")"
@@ -25,7 +25,7 @@ def create_tables():
             "id INTEGER primary key,"
             "service TEXT NOT NULL,"
             "username TEXT NOT NULL,"
-            "password TEXT NOT NULL"
+            "password BLOB NOT NULL"
             ")"
         )
         cur.execute("INSERT OR IGNORE INTO master (id, language) VALUES (1, 'en')")
