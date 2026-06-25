@@ -41,8 +41,8 @@ class GUI:
         self.root.bind_all("<MouseWheel>", self.update_activity)
 
         self.crypto = Crypto()
-        self.auth = Auth(self.debug, self.crypto)
         self.OTP = OTP(self.debug, self.crypto)
+        self.auth = Auth(self.debug, self.crypto, self.OTP)
 
     def run(self):
         self.page_login()
@@ -161,27 +161,12 @@ class GUI:
 
             return result[0]
 
-        # event: for <return> button on login
+        # parameter event: for <return> button on login
         def verify_master_password(event=None):
-            # derive KEK on login
-            master_password = txt_password.get()
-            password_bytes = master_password.encode("utf-8")
-            salt_bytes = db.get_salt()
-            kek = self.auth.derive_kek(password_bytes, salt_bytes)
-
-            # retrieve DEK from database
-            encrypted_dek = db.get_dek()
-
-            # verify if KEK decrypts DEK
-            try:
-                dek = self.auth.decrypt_dek(encrypted_dek, kek)
-            except Exception:
+            input_password = txt_password.get()
+            if not self.auth.verify_master_password(input_password):
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                 self.page_login()
-                return
-
-            # store DEK in memory
-            self.crypto.set_dek(dek)
 
             # check if 2FA is enabled
             if db.get_mfa():
@@ -192,27 +177,12 @@ class GUI:
                 self.page_passwords(self.root)
 
         def add_2FA():
-            # derive KEK
-            master_password = txt_password.get()
-            password_bytes = master_password.encode("utf-8")
-            salt_bytes = db.get_salt()
-            kek = self.auth.derive_kek(password_bytes, salt_bytes)
-
-            # retrieve DEK from database
-            encrypted_dek = db.get_dek()
-
-            # verify if KEK decrypts DEK
-            try:
-                dek = self.auth.decrypt_dek(encrypted_dek, kek)
-            except Exception:
+            input_password = txt_password.get()
+            if not self.auth.verify_master_password(input_password):
                 tk.messagebox.showerror(
                     t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
                 )
                 self.page_login()
-                return
-
-            # store DEK in memory
-            self.crypto.set_dek(dek)
 
             # ask user if they want to configure 2FA
             response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
@@ -299,24 +269,9 @@ class GUI:
             masterpw2 = pw_entry2.get()
 
             if masterpw == masterpw2:
-                result = self.auth.create_master_password(masterpw)
+                result = self.auth.validate_master_password(masterpw)
                 if result is True:
-                    # derive KEK from master password and salt
-                    salt_bytes = self.auth.create_salt()
-                    kek = self.auth.derive_kek(masterpw.encode("utf-8"), salt_bytes)
-
-                    # create DEK and encrypt with KEK
-                    dek = os.urandom(32)
-                    encrypted_dek = self.auth.encrypt_dek(dek, kek)
-
-                    # set DEK to create otp secret
-                    self.crypto.set_dek(dek)
-                    encrypted_otp = self.auth.create_otp_secret()
-                    self.OTP.set_otp_secret(encrypted_otp)
-
-                    # save to database
-                    db.create_master_password(encrypted_dek, encrypted_otp)
-                    db.set_salt(salt_bytes)
+                    self.auth.create_master_password(masterpw)
 
                     response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
                     if response:
@@ -605,24 +560,14 @@ class GUI:
                 new_password = new_password_entry.get()
                 new_password2 = new_password_entry2.get()
 
-                # derive KEK
-                password_bytes = old_password.encode("utf-8")
-                salt_bytes = db.get_salt()
-                kek = self.auth.derive_kek(password_bytes, salt_bytes)
-
-                # retrieve DEK from database
-                encrypted_dek = db.get_dek()
-
-                # verify if KEK decrypts DEK
-                try:
-                    dek = self.auth.decrypt_dek(encrypted_dek, kek)
-                except Exception:
+                if not self.auth.verify_master_password(old_password):
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                     popup.destroy()
                     return
 
+                # TODO: use auth.create_master_password()
                 if new_password == new_password2:
-                    result = self.auth.create_master_password(new_password)
+                    result = self.auth.validate_master_password(new_password)
                     if result is True:
                         # decrypt DEK and otp secret
                         encrypted_otp = db.get_otp_secret()
@@ -636,6 +581,7 @@ class GUI:
                         )
 
                         # encrypt DEK and otp secret with new KEK
+                        dek = self.crypto.get_dek()
                         encrypted_dek = self.auth.encrypt_dek(dek, new_kek)
                         encrypted_otp = self.crypto.encrypt(otp_secret)
 

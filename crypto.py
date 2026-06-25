@@ -12,6 +12,9 @@ class Crypto:
         self.dek = None
         self.aesgcm = None
 
+    def get_dek(self):
+        return self.dek
+
     def set_dek(self, dek):
         self.dek = dek
         self.aesgcm = AESGCM(dek)
