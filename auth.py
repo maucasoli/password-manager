@@ -20,7 +20,7 @@ class Auth:
         memory_cost = 2**18 if self.debug else 2**21
 
         kdf = Argon2id(
-            salt=salt_bytes, length=32, iterations=1, lanes=4, memory_cost=memory_cost
+            salt=salt_bytes, length=32, iterations=3, lanes=4, memory_cost=memory_cost
         )
         return kdf.derive(password_bytes)
 
