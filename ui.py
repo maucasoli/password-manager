@@ -163,57 +163,66 @@ class GUI:
 
         # event: for <return> button on login
         def verify_master_password(event=None):
+            # derive KEK on login
             master_password = txt_password.get()
-            # check if master password is correct
-            if self.auth.verify_master_password(master_password):
+            password_bytes = master_password.encode("utf-8")
+            salt_bytes = db.get_salt()
+            kek = self.auth.derive_kek(password_bytes, salt_bytes)
 
-                # derive KEK on login
-                password_bytes = master_password.encode("utf-8")
-                salt_bytes = db.get_salt()
-                kek = self.auth.derive_kek(password_bytes, salt_bytes)
+            # retrieve DEK from database
+            encrypted_dek = db.get_dek()
 
-                # retrieve DEK from database and store in memory
-                encrypted_dek = db.get_dek()
+            # verify if KEK decrypts DEK
+            try:
                 dek = self.auth.decrypt_dek(encrypted_dek, kek)
-                self.crypto.set_dek(dek)
-
-                if db.get_mfa():
-                    self.OTP.set_otp_secret(db.get_otp_secret())
-                    if check_totp():
-                        self.page_passwords(self.root)
-                else:
-                    self.page_passwords(self.root)
-
-            else:
+            except Exception:
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
+                self.page_login()
+                return
+
+            # store DEK in memory
+            self.crypto.set_dek(dek)
+
+            # check if 2FA is enabled
+            if db.get_mfa():
+                self.OTP.set_otp_secret(db.get_otp_secret())
+                if check_totp():
+                    self.page_passwords(self.root)
+            else:
+                self.page_passwords(self.root)
 
         def add_2FA():
+             # derive KEK
             master_password = txt_password.get()
-            if self.auth.verify_master_password(master_password):
-                response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
-                if response:
-                    # derive KEK
-                    password_bytes = master_password.encode("utf-8")
-                    salt_bytes = db.get_salt()
-                    kek = self.auth.derive_kek(password_bytes, salt_bytes)
+            password_bytes = master_password.encode("utf-8")
+            salt_bytes = db.get_salt()
+            kek = self.auth.derive_kek(password_bytes, salt_bytes)
 
-                    # decrypt and set DEK
-                    encrypted_dek = db.get_dek().decode("utf-8")
-                    dek = self.auth.decrypt_dek(encrypted_dek, kek)
-                    self.crypto.set_dek(dek)
+            # retrieve DEK from database
+            encrypted_dek = db.get_dek()
 
-                    # create and set otp secret
-                    encrypted_otp = self.auth.create_otp_secret()
-                    self.OTP.set_otp_secret(encrypted_otp)
+            # verify if KEK decrypts DEK
+            try:
+                dek = self.auth.decrypt_dek(encrypted_dek, kek)
+            except Exception:
+                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD"))
+                self.page_login()
+                return
+            
+            # store DEK in memory
+            self.crypto.set_dek(dek)
+    
+            # ask user if they want to configure 2FA
+            response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
+            if response:
+                # create and set otp secret
+                encrypted_otp = self.auth.create_otp_secret()
+                self.OTP.set_otp_secret(encrypted_otp)
 
-                    # save to database
-                    db.set_otp_secret(encrypted_otp)
+                # save to database
+                db.set_otp_secret(encrypted_otp)
 
-                    self.show_qrcode()
-            else:
-                tk.messagebox.showerror(
-                    t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
-                )
+                self.show_qrcode()
 
         #
         self.center_window(self.root, self.width, self.height)
@@ -308,9 +317,7 @@ class GUI:
                     self.OTP.set_otp_secret(encrypted_otp)
 
                     # save to database
-                    db.create_master_password(
-                        masterpw_hash, encrypted_dek, encrypted_otp
-                    )
+                    db.create_master_password(encrypted_dek, encrypted_otp)
                     db.set_salt(salt_bytes)
 
                     response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
@@ -595,63 +602,62 @@ class GUI:
                 )
 
         def on_change_password():
-            # TODO: fix code repetition
             def on_ok(event=None):
                 old_password = old_password_entry.get()
                 new_password = new_password_entry.get()
                 new_password2 = new_password_entry2.get()
 
-                if self.auth.verify_master_password(old_password):
-                    if new_password == new_password2:
-                        # return a tuple with true and hash
-                        result = self.auth.create_master_password(new_password)
-                        # check if result is tuple or error string
-                        if isinstance(result, tuple):
-                            _, masterpw_hash = result
+                # derive KEK
+                password_bytes = old_password.encode("utf-8")
+                salt_bytes = db.get_salt()
+                kek = self.auth.derive_kek(password_bytes, salt_bytes)
 
-                            # get current KEK from old password and salt
-                            salt_bytes = db.get_salt()
-                            old_password_bytes = old_password.encode("utf-8")
-                            old_kek = self.auth.derive_kek(
-                                old_password_bytes, salt_bytes
-                            )
+                # retrieve DEK from database
+                encrypted_dek = db.get_dek()
 
-                            # decrypt DEK and otp secret
-                            encrypted_dek = db.get_dek()
-                            dek = self.auth.decrypt_dek(encrypted_dek, old_kek)
-                            self.crypto.set_dek(dek)
-                            encrypted_otp = db.get_otp_secret()
-                            otp_secret = self.crypto.decrypt(encrypted_otp)
+                # verify if KEK decrypts DEK
+                try:
+                    dek = self.auth.decrypt_dek(encrypted_dek, kek)
+                except Exception:
+                    tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
+                    popup.destroy()
+                    return
 
-                            # create new KEK and salt
-                            new_password_bytes = new_password.encode("utf-8")
-                            new_salt_bytes = self.auth.create_salt()
-                            new_kek = self.auth.derive_kek(
-                                new_password_bytes, new_salt_bytes
-                            )
+                if new_password == new_password2:
+                    # return a tuple with true and hash
+                    result = self.auth.create_master_password(new_password)
+                    # check if result is tuple or error string
+                    if isinstance(result, tuple):
+                        _, masterpw_hash = result
 
-                            # encrypt DEK and otp secret with new KEK
-                            encrypted_dek = self.auth.encrypt_dek(dek, new_kek)
-                            encrypted_otp = self.crypto.encrypt(otp_secret)
+                        # decrypt DEK and otp secret
+                        encrypted_otp = db.get_otp_secret()
+                        otp_secret = self.crypto.decrypt(encrypted_otp)
 
-                            # save to database
-                            db.create_master_password(
-                                masterpw_hash, encrypted_dek, encrypted_otp
-                            )
-                            db.set_salt(new_salt_bytes)
+                        # create new KEK and salt
+                        new_password_bytes = new_password.encode("utf-8")
+                        new_salt_bytes = self.auth.create_salt()
+                        new_kek = self.auth.derive_kek(
+                            new_password_bytes, new_salt_bytes
+                        )
 
-                            msg.showinfo(
-                                t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
-                            )
-                            popup.destroy()
-                        else:
-                            msg.showwarning(t("DIALOG_ERROR"), result)
-                            popup.destroy()
+                        # encrypt DEK and otp secret with new KEK
+                        encrypted_dek = self.auth.encrypt_dek(dek, new_kek)
+                        encrypted_otp = self.crypto.encrypt(otp_secret)
+
+                        # save to database
+                        db.create_master_password(encrypted_dek, encrypted_otp)
+                        db.set_salt(new_salt_bytes)
+
+                        msg.showinfo(
+                            t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
+                        )
+                        popup.destroy()
                     else:
-                        msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
+                        msg.showwarning(t("DIALOG_ERROR"), result)
                         popup.destroy()
                 else:
-                    tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
+                    msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
                     popup.destroy()
 
             #

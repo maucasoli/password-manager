@@ -13,7 +13,6 @@ def create_tables():
         cur.execute(
             "CREATE TABLE IF NOT EXISTS master ("
             "id INTEGER primary key,"
-            "password_hash TEXT,"
             "salt BLOB,"
             "encrypted_dek BLOB,"
             "otp_secret TEXT,"
@@ -75,12 +74,12 @@ def check_master_password():
             return False
 
 
-def create_master_password(password, encrypted_dek, otp_secret):
+def create_master_password(encrypted_dek, otp_secret):
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "UPDATE master SET password_hash = (?), encrypted_dek = (?), otp_secret = (?) WHERE id = 1",
-            (password, encrypted_dek, otp_secret),
+            "UPDATE master SET encrypted_dek = (?), otp_secret = (?) WHERE id = 1",
+            (encrypted_dek, otp_secret),
         )
         con.commit()
 
@@ -199,6 +198,6 @@ def exist_master_user():
     with connect() as con:
         cur = con.cursor()
         cur.execute(
-            "SELECT password_hash FROM master WHERE id = 1 AND password_hash IS NOT NULL"
+            "SELECT salt FROM master WHERE id = 1 AND salt IS NOT NULL"
         )
         return cur.fetchone() is not None
