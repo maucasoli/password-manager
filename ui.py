@@ -2,24 +2,24 @@ import tkinter as tk
 from tkinter import ttk
 import database as db
 import tkinter.messagebox as msg
-from auth import Auth
-from crypto import Crypto
 import generator
-from otp import OTP
 import time
 from translations import t, set_lang
 from ui_theme import Theme
-import os
 
 
 class GUI:
 
-    def __init__(self, debug=False):
+    def __init__(self, crypto, otp, auth, debug=False):
         # if debug:
         # no password requirements
         # print TOTP to terminal
         # no auto-lock from idle
         self.debug = debug
+
+        self.crypto = crypto
+        self.otp = otp
+        self.auth = auth
 
         self.root = tk.Tk()
         self.root.configure(bg="#1A1D2E")
@@ -40,10 +40,6 @@ class GUI:
         self.root.bind_all("<Motion>", self.update_activity)
         self.root.bind_all("<MouseWheel>", self.update_activity)
 
-        self.crypto = Crypto()
-        self.OTP = OTP(self.debug, self.crypto)
-        self.auth = Auth(self.debug, self.crypto, self.OTP)
-
     def run(self):
         self.page_login()
 
@@ -57,7 +53,7 @@ class GUI:
     def clear_memory(self):
         self.tree = None
         self.crypto.clear()
-        self.OTP.clear()
+        self.otp.clear()
 
     def update_activity(self, event=None):
         self.last_activity = time.time()
@@ -95,7 +91,7 @@ class GUI:
         self.center_window(popup, 300, 250)
         popup.focus_set()
 
-        photo = self.OTP.generate_uri()
+        photo = self.otp.generate_uri()
         label = tk.Label(popup, image=photo)
         label.image = photo
         label.pack()
@@ -115,7 +111,7 @@ class GUI:
 
             def on_otp():
                 input_totp = totp_entry.get()
-                if self.OTP.verify_totp(input_totp):
+                if self.otp.verify_totp(input_totp):
                     result[0] = True
                     popup.destroy()
                 else:
@@ -155,7 +151,7 @@ class GUI:
             )
             btn_verify_totp.pack(pady=10)
 
-            totp = self.OTP.generate_totp()
+            totp = self.otp.generate_totp()
 
             popup.wait_window(popup)
 
@@ -170,7 +166,7 @@ class GUI:
 
             # check if 2FA is enabled
             if db.get_mfa():
-                self.OTP.set_otp_secret(db.get_otp_secret())
+                self.otp.set_otp_secret(db.get_otp_secret())
                 if check_totp():
                     self.page_passwords(self.root)
             else:
@@ -188,8 +184,8 @@ class GUI:
             response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
             if response:
                 # create and set otp secret
-                encrypted_otp = self.auth.create_otp_secret()
-                self.OTP.set_otp_secret(encrypted_otp)
+                encrypted_otp = self.otp.create_otp_secret()
+                self.otp.set_otp_secret(encrypted_otp)
 
                 # save to database
                 db.set_otp_secret(encrypted_otp)
@@ -565,30 +561,13 @@ class GUI:
                     popup.destroy()
                     return
 
-                # TODO: use auth.create_master_password()
                 if new_password == new_password2:
                     result = self.auth.validate_master_password(new_password)
+
                     if result is True:
-                        # decrypt DEK and otp secret
-                        encrypted_otp = db.get_otp_secret()
-                        otp_secret = self.crypto.decrypt(encrypted_otp)
-
-                        # create new KEK and salt
-                        new_password_bytes = new_password.encode("utf-8")
-                        new_salt_bytes = self.auth.create_salt()
-                        new_kek = self.auth.derive_kek(
-                            new_password_bytes, new_salt_bytes
+                        self.auth.create_master_password(
+                            new_password, change_password=True
                         )
-
-                        # encrypt DEK and otp secret with new KEK
-                        dek = self.crypto.get_dek()
-                        encrypted_dek = self.auth.encrypt_dek(dek, new_kek)
-                        encrypted_otp = self.crypto.encrypt(otp_secret)
-
-                        # save to database
-                        db.create_master_password(encrypted_dek, encrypted_otp)
-                        db.set_salt(new_salt_bytes)
-
                         msg.showinfo(
                             t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
                         )

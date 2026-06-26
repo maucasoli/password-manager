@@ -2,7 +2,6 @@ import pyotp
 import qrcode
 from io import BytesIO
 from PIL import ImageTk
-import qrcode
 
 
 class OTP:
@@ -17,8 +16,16 @@ class OTP:
         self.totp = None
         self.secret = None
 
+    def get_otp_secret(self):
+        return self.secret
+
     def set_otp_secret(self, secret):
         self.secret = secret
+
+    def create_otp_secret(self):
+        otp_secret = pyotp.random_base32().encode("utf-8")
+        encrypted_otp = self.crypto.encrypt(otp_secret)
+        return encrypted_otp
 
     def generate_totp(self):
         secret = self.crypto.decrypt(self.secret).decode("utf-8")

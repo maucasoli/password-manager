@@ -1,6 +1,5 @@
 import secrets
 import re
-import pyotp
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 import os
@@ -9,10 +8,10 @@ import database as db
 
 class Auth:
 
-    def __init__(self, debug, crypto, OTP):
+    def __init__(self, debug, crypto, otp):
         self.debug = debug
         self.crypto = crypto
-        self.OTP = OTP
+        self.otp = otp
 
     # derive from master password
     def derive_kek(self, password_bytes, salt_bytes):
@@ -57,11 +56,6 @@ class Auth:
         salt_bytes = secrets.token_bytes(32)
         return salt_bytes
 
-    def create_otp_secret(self):
-        otp_secret = pyotp.random_base32().encode("utf-8")
-        encrypted_otp = self.crypto.encrypt(otp_secret)
-        return encrypted_otp
-
     # authentication
     def verify_master_password(self, input_password):
         # derive KEK
@@ -72,7 +66,7 @@ class Auth:
         # retrieve DEK
         encrypted_dek = db.get_dek()
 
-        # verify if KEK decrypts DEK, otherwise incorrect password
+        # verify if KEK decrypts DEK, otherwise password is incorrect
         try:
             dek = self.decrypt_dek(encrypted_dek, kek)
         except Exception:
@@ -83,21 +77,30 @@ class Auth:
 
         return True
 
-    # TODO: add this logic to change password
-    def create_master_password(self, input_password):
+    # create or change master password
+    def create_master_password(self, input_password, change_password=False):
         # derive KEK from master password and salt
         password_bytes = input_password.encode("utf-8")
         salt_bytes = self.create_salt()
         kek = self.derive_kek(password_bytes, salt_bytes)
 
-        # create DEK and encrypt with KEK
-        dek = os.urandom(32)
-        encrypted_dek = self.encrypt_dek(dek, kek)
+        # if user is changing password
+        if change_password:
+            # get DEK and otp secret (encrypted) from memory
+            dek = self.crypto.get_dek()
+            encrypted_otp = self.otp.get_otp_secret()
 
-        # set DEK to create otp secret
-        self.crypto.set_dek(dek)
-        encrypted_otp = self.create_otp_secret()
-        self.OTP.set_otp_secret(encrypted_otp)
+        # first time creating master password
+        else:
+            # create and set DEK to memory
+            dek = os.urandom(32)
+            self.crypto.set_dek(dek)
+            # create new otp secret
+            encrypted_otp = self.otp.create_otp_secret()
+            self.otp.set_otp_secret(encrypted_otp)
+
+        # encrypt DEK with KEK
+        encrypted_dek = self.encrypt_dek(dek, kek)
 
         # save to database
         db.create_master_password(encrypted_dek, encrypted_otp)
