@@ -1,25 +1,31 @@
 import tkinter as tk
 from tkinter import ttk
-import database as db
 import tkinter.messagebox as msg
 import generator
 import time
 from translations import t, set_lang
 from ui_theme import Theme
+from database import Database
+from crypto import Crypto
+from otp import OTP
+from auth import Auth
+from session import Session
 
 
 class GUI:
 
-    def __init__(self, crypto, otp, auth, debug=False):
+    def __init__(self, db: Database, crypto: Crypto, otp: OTP, auth: Auth, debug=False):
         # if debug:
         # no password requirements
         # print TOTP to terminal
         # no auto-lock from idle
         self.debug = debug
 
+        self.db = db
         self.crypto = crypto
         self.otp = otp
         self.auth = auth
+        self.session = None
 
         self.root = tk.Tk()
         self.root.configure(bg="#1A1D2E")
@@ -29,7 +35,9 @@ class GUI:
         self.height = 300
         self.tree = None
 
-        self.lang = db.get_language()
+        # TODO: fix lang
+        self.lang = "en"
+        # self.lang = self.db.get_language()
         set_lang(self.lang)
 
         # for auto-lock
@@ -47,13 +55,14 @@ class GUI:
     def toggle_lang(self):
         self.lang = "fr" if self.lang == "en" else "en"
         set_lang(self.lang)
-        db.set_language(self.lang)
+        self.db.set_language(self.session.user_id, self.lang)
         self.page_login()
 
     def clear_memory(self):
         self.tree = None
         self.crypto.clear()
         self.otp.clear()
+        self.session = None
 
     def update_activity(self, event=None):
         self.last_activity = time.time()
@@ -96,7 +105,7 @@ class GUI:
         label.image = photo
         label.pack()
 
-        db.set_mfa()
+        self.db.set_mfa(self.session.user_id)
 
         popup.bind("<Return>", lambda e: popup.destroy())
         popup.wait_window(popup)
@@ -159,38 +168,24 @@ class GUI:
 
         # parameter event: for <return> button on login
         def verify_master_password(event=None):
+            input_username = username_entry.get()
             input_password = txt_password.get()
-            if not self.auth.verify_master_password(input_password):
+
+            # return {user_id, dek} or None
+            result = self.auth.verify_master_password(input_username, input_password)
+            if result is False:
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                 self.page_login()
 
+            self.session = Session(result["user_id"], result["username"], result["dek"])
+
             # check if 2FA is enabled
-            if db.get_mfa():
-                self.otp.set_otp_secret(db.get_otp_secret())
+            if self.db.get_mfa(self.session.user_id):
+                self.otp.set_otp_secret(self.db.get_otp_secret(self.session.user_id))
                 if check_totp():
                     self.page_passwords(self.root)
             else:
                 self.page_passwords(self.root)
-
-        def add_2FA():
-            input_password = txt_password.get()
-            if not self.auth.verify_master_password(input_password):
-                tk.messagebox.showerror(
-                    t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
-                )
-                self.page_login()
-
-            # ask user if they want to configure 2FA
-            response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
-            if response:
-                # create and set otp secret
-                encrypted_otp = self.otp.create_otp_secret()
-                self.otp.set_otp_secret(encrypted_otp)
-
-                # save to database
-                db.set_otp_secret(encrypted_otp)
-
-                self.show_qrcode()
 
         #
         self.center_window(self.root, self.width, self.height)
@@ -200,6 +195,16 @@ class GUI:
         self.theme.label(
             self.root, t("TITLE_PASSWORD_MANAGER"), ("Segoe UI", 18, "bold")
         ).pack(pady=10)
+
+        # TODO: translations
+        # label username
+        self.theme.label(self.root, "Username", ("Segoe UI", 12), fg="#889082").pack(
+            pady=(0, 5)
+        )
+
+        username_entry = self.theme.entry(self.root, font=("Segoe UI", 12))
+        username_entry.pack()
+        username_entry.focus_set()
 
         # label type password
         self.theme.label(
@@ -211,7 +216,6 @@ class GUI:
         txt_password.pack()
         # allow enter button
         txt_password.bind("<Return>", verify_master_password)
-        txt_password.focus_set()
 
         # button login
         btn_login = self.theme.button(
@@ -235,16 +239,6 @@ class GUI:
         )
         btn_create_master.pack(pady=(10, 0))
 
-        # button add 2FA
-        btn_add_2FA = self.theme.button(
-            self.root,
-            lambda: add_2FA(),
-            t("BTN_ENABLE_2FA"),
-            font=("Segoe UI", 11, "bold"),
-            bg="#2F3355",
-        )
-        btn_add_2FA.pack(pady=(5, 5))
-
         # button language
         btn_lang = self.theme.button(
             self.root,
@@ -265,13 +259,15 @@ class GUI:
             masterpw2 = pw_entry2.get()
 
             if masterpw == masterpw2:
+                # password requirements
                 result = self.auth.validate_master_password(masterpw)
+                # True or error string
                 if result is True:
                     self.auth.create_master_password(masterpw)
 
                     response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
                     if response:
-                        db.set_mfa()
+                        self.db.set_mfa(self.session.user_id)
                         self.show_qrcode()
                     self.page_login()
                 else:
@@ -279,69 +275,77 @@ class GUI:
             else:
                 msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
 
-        if not db.exist_master_user():
-            for widget in root.winfo_children():
-                widget.destroy()
+        for widget in root.winfo_children():
+            widget.destroy()
 
-            # label title
-            self.theme.label(
-                self.root, t("TITLE_CREATE_USER"), ("Segoe UI", 18, "bold")
-            ).pack(pady=10)
+        # label title
+        self.theme.label(
+            self.root, t("TITLE_CREATE_USER"), ("Segoe UI", 18, "bold")
+        ).pack(pady=10)
 
-            # label type password
-            self.theme.label(
-                self.root,
-                t("LABEL_CHOOSE_MASTER_PASSWORD"),
-                ("Segoe UI", 12),
-                fg="#889082",
-            ).pack(pady=(0, 2))
+        # TODO: use translations for username
+        # label username
+        self.theme.label(
+            self.root,
+            "Username",
+            ("Segoe UI", 12),
+            fg="#889082",
+        ).pack(pady=(0, 2))
 
-            # entry password
-            pw_entry = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
-            pw_entry.pack(pady=(0, 10))
-            pw_entry.focus_set()
+        # entry username
+        username_entry = self.theme.entry(self.root, font=("Segoe UI", 12))
+        username_entry.pack(pady=(0, 10))
+        username_entry.focus_set()
 
-            # label retype password
-            self.theme.label(
-                self.root,
-                t("LABEL_REENTER_MASTER_PASSWORD"),
-                ("Segoe UI", 12),
-                fg="#889082",
-            ).pack(pady=(0, 2))
+        # label type password
+        self.theme.label(
+            self.root,
+            t("LABEL_CHOOSE_MASTER_PASSWORD"),
+            ("Segoe UI", 12),
+            fg="#889082",
+        ).pack(pady=(0, 2))
 
-            # entry retype password
-            pw_entry2 = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
-            pw_entry2.pack(pady=(0, 10))
-            # allow enter button
-            pw_entry2.bind("<Return>", on_ok)
+        # entry password
+        pw_entry = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
+        pw_entry.pack(pady=(0, 10))
 
-            # button create user
-            btn_create = self.theme.button(
-                self.root,
-                on_ok,
-                t("BTN_CREATE"),
-                font=("Segoe UI", 12, "bold"),
-                bg="#4F6EF7",
-                width=18,
-                height=1,
-            )
-            btn_create.pack(pady=10)
+        # label retype password
+        self.theme.label(
+            self.root,
+            t("LABEL_REENTER_MASTER_PASSWORD"),
+            ("Segoe UI", 12),
+            fg="#889082",
+        ).pack(pady=(0, 2))
 
-            # button back
-            btn_back = self.theme.button(
-                self.root,
-                lambda: self.page_login(),
-                t("BTN_BACK"),
-                font=("Segoe UI", 12, "bold"),
-                bg="#2F3355",
-                width=18,
-                height=1,
-            )
-            btn_back.pack(pady=10)
+        # entry retype password
+        pw_entry2 = self.theme.entry(self.root, show="*", font=("Segoe UI", 12))
+        pw_entry2.pack(pady=(0, 10))
+        # allow enter button
+        pw_entry2.bind("<Return>", on_ok)
 
-        else:
-            msg.showwarning(t("DIALOG_ALERT"), t("MSG_USER_EXISTS"))
-            self.page_login()
+        # button create user
+        btn_create = self.theme.button(
+            self.root,
+            on_ok,
+            t("BTN_CREATE"),
+            font=("Segoe UI", 12, "bold"),
+            bg="#4F6EF7",
+            width=18,
+            height=1,
+        )
+        btn_create.pack(pady=10)
+
+        # button back
+        btn_back = self.theme.button(
+            self.root,
+            lambda: self.page_login(),
+            t("BTN_BACK"),
+            font=("Segoe UI", 12, "bold"),
+            bg="#2F3355",
+            width=18,
+            height=1,
+        )
+        btn_back.pack(pady=10)
 
     def add_password(self):
         def on_ok(event=None):
@@ -355,7 +359,9 @@ class GUI:
                 encrypted_password = self.crypto.encrypt(password_bytes)
 
                 if service and username and password:
-                    db.add_password(service, username, encrypted_password)
+                    self.db.add_password(
+                        self.session.user_id, service, username, encrypted_password
+                    )
                     msg.showinfo(t("DIALOG_SUCCESS"), t("MSG_PASSWORD_ADDED"))
                     popup.destroy()
                     self.load_data(self.tree)
@@ -446,7 +452,7 @@ class GUI:
         btn_generate_password.pack(pady=10)
 
     def load_data(self, tree):
-        passwords = db.read_table_passwords()
+        passwords = self.db.read_table_passwords(self.session.user_id)
 
         # clean table
         for item in tree.get_children():
@@ -486,7 +492,7 @@ class GUI:
         )
         btn_logout.pack(side="right", padx=(0, 5), pady=(5, 5))
 
-        # middle frame (button add password, button remove 2FA)
+        # middle frame (button add password, button enable 2FA)
         middle_frame = tk.Frame(self.root, bg="#1A1D2E")
         middle_frame.pack(fill="x", padx=0, pady=(0, 0))
 
@@ -503,19 +509,17 @@ class GUI:
         btn_add.pack(side="left", padx=(5, 0), pady=(2, 2))
         btn_add.focus_set()
 
-        # button remove 2FA
-        btn_remove_2fa = self.theme.button(
+        # button enable 2FA
+        btn_add_2FA = self.theme.button(
             middle_frame,
-            lambda: on_remove_2fa(),
-            t("BTN_DISABLE_2FA"),
-            font=("Segoe UI", 10, "bold"),
+            lambda: on_enable_2FA(),
+            t("BTN_ENABLE_2FA"),
+            font=("Segoe UI", 11, "bold"),
             bg="#2F3355",
-            width=20,
-            height=2,
         )
-        btn_remove_2fa.pack(side="right", padx=(0, 5), pady=(2, 2))
+        btn_add_2FA.pack(side="right", padx=(0, 5), pady=(2, 2))
 
-        # bottom frame (button change master password)
+        # bottom frame (button change master password, disable 2FA)
         bottom_frame = tk.Frame(self.root, bg="#1A1D2E")
         bottom_frame.pack(fill="x", padx=0, pady=(0, 2))
 
@@ -529,7 +533,19 @@ class GUI:
             width=20,
             height=2,
         )
-        btn_change_password.pack(side="right", padx=(0, 5), pady=(2, 5))
+        btn_change_password.pack(side="left", padx=(5, 0), pady=(2, 2))
+
+        # button disable 2FA
+        btn_remove_2fa = self.theme.button(
+            bottom_frame,
+            lambda: on_disable_2fa(),
+            t("BTN_DISABLE_2FA"),
+            font=("Segoe UI", 10, "bold"),
+            bg="#2F3355",
+            width=20,
+            height=2,
+        )
+        btn_remove_2fa.pack(side="right", padx=(0, 5), pady=(2, 2))
 
         def on_logout():
             for widget in root.winfo_children():
@@ -537,13 +553,35 @@ class GUI:
             self.clear_memory()
             self.page_login()
 
-        def on_remove_2fa():
-            if db.get_mfa():
+        def on_enable_2FA():
+            input_password = txt_password.get()
+            if not self.auth.verify_master_password(
+                self.session.username, input_password
+            ):
+                tk.messagebox.showerror(
+                    t("DIALOG_ERROR"), t("MSG_NO_2FA_OR_WRONG_PASSWORD")
+                )
+                self.page_login()
+
+            # ask user if they want to configure 2FA
+            response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
+            if response:
+                # create and set otp secret
+                encrypted_otp = self.otp.create_otp_secret()
+                self.otp.set_otp_secret(encrypted_otp)
+
+                # save to database
+                self.db.set_otp_secret(self.session.user_id, encrypted_otp)
+
+                self.show_qrcode()
+
+        def on_disable_2fa():
+            if self.db.get_mfa(self.session.user_id):
                 response = msg.askyesno(
                     t("DIALOG_SUCCESS"), t("MSG_REMOVE_2FA_CONFIRM")
                 )
                 if response:
-                    db.disable_mfa()
+                    self.db.disable_mfa(self.session.user_id)
                     msg.showinfo(t("DIALOG_2FA_STATUS"), t("MSG_2FA_DISABLED"))
             else:
                 tk.messagebox.showerror(
@@ -556,7 +594,9 @@ class GUI:
                 new_password = new_password_entry.get()
                 new_password2 = new_password_entry2.get()
 
-                if not self.auth.verify_master_password(old_password):
+                if not self.auth.verify_master_password(
+                    self.session.username, old_password
+                ):
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                     popup.destroy()
                     return
@@ -566,7 +606,7 @@ class GUI:
 
                     if result is True:
                         self.auth.create_master_password(
-                            new_password, change_password=True
+                            new_password, change_password=True, session=self.session
                         )
                         msg.showinfo(
                             t("TITLE_CHANGE_PASSWORD"), t("MSG_PASSWORD_CHANGED")
@@ -665,8 +705,8 @@ class GUI:
         def show_password(event):
             item = self.tree.focus()
             values = self.tree.item(item, "values")
-            id = values[0]
-            encrypted_password = db.get_password(id)
+            item_id = values[0]
+            encrypted_password = self.db.get_password(item_id)
             real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
             msg.showinfo(t("LABEL_PASSWORD"), real_password)
 
@@ -699,7 +739,7 @@ class GUI:
         def copy_password(item):
             values = self.tree.item(item, "values")
             item_id = values[0]
-            encrypted_password = db.get_password(item_id)
+            encrypted_password = self.db.get_password(item_id)
             real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
 
             self.root.clipboard_clear()
@@ -714,5 +754,5 @@ class GUI:
             response = msg.askyesno(t("BTN_DELETE"), t("MSG_ARE_YOU_SURE"))
 
             if response:
-                db.delete_password(item_id)
+                self.db.delete_password(item_id)
                 self.tree.delete(item)

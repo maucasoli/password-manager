@@ -1,6 +1,6 @@
 from ui import GUI
-import database as db
 import argparse
+from database import Database
 from crypto import Crypto
 from otp import OTP
 from auth import Auth
@@ -12,14 +12,14 @@ def main():
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
+    db = Database()
+    crypto = Crypto()
+    otp = OTP(crypto, args.debug)
+    auth = Auth(db, crypto, otp, args.debug)
+
     db.create_tables()
 
-    crypto = Crypto()
-    otp = OTP(args.debug, crypto)
-    auth = Auth(args.debug, crypto, otp)
-
-    app = GUI(crypto=crypto, otp=otp, auth=auth, debug=args.debug)
-
+    app = GUI(db=db, crypto=crypto, otp=otp, auth=auth, debug=args.debug)
     app.run()
 
 

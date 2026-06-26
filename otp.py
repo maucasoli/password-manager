@@ -2,13 +2,15 @@ import pyotp
 import qrcode
 from io import BytesIO
 from PIL import ImageTk
+from crypto import Crypto
 
 
 class OTP:
 
-    def __init__(self, debug, crypto):
-        self.debug = debug
+    def __init__(self, crypto: Crypto, debug):
         self.crypto = crypto
+        self.debug = debug
+
         self.totp = None
         self.secret = None
 

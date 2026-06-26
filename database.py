@@ -1,172 +1,187 @@
 import sqlite3
 
 
-def connect():
-    con = sqlite3.connect("database.db")
-    return con
+class Database:
 
+    def __init__(self):
+        pass
 
-def create_tables():
-    with connect() as con:
-        cur = con.cursor()
-        # no autoincrement due to insert or ignore
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS master ("
-            "id INTEGER primary key,"
-            "salt BLOB,"
-            "encrypted_dek BLOB,"
-            "otp_secret BLOB,"
-            "mfa_enabled INTEGER DEFAULT 0,"
-            "language TEXT DEFAULT 'en'"
-            ")"
-        )
-        cur.execute(
-            "CREATE TABLE IF NOT EXISTS passwords ("
-            "id INTEGER primary key,"
-            "service TEXT NOT NULL,"
-            "username TEXT NOT NULL,"
-            "password BLOB NOT NULL"
-            ")"
-        )
-        cur.execute("INSERT OR IGNORE INTO master (id, language) VALUES (1, 'en')")
-        con.commit()
+    def connect(self):
+        con = sqlite3.connect("database.db")
+        # needed for foreign key
+        con.execute("PRAGMA foreign_keys = ON")
+        return con
 
+    #
+    # main function
+    #
+    def create_tables(self):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS users ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "username TEXT UNIQUE NOT NULL,"
+                "salt BLOB,"
+                "encrypted_dek BLOB,"
+                "encrypted_otp_secret BLOB,"
+                "mfa_enabled INTEGER DEFAULT 0,"
+                "language TEXT DEFAULT 'en'"
+                ")"
+            )
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS passwords ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "user_id INTEGER,"
+                "service TEXT NOT NULL,"
+                "username TEXT NOT NULL,"
+                "password BLOB NOT NULL,"
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            con.commit()
 
-def set_language(lang):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("UPDATE master SET language = (?) WHERE id = 1", (lang,))
-        con.commit()
+    #
+    # page login
+    #
+    def create_master_password(
+        self, username, salt_bytes, encrypted_dek, encrypted_otp_secret
+    ):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "INSERT INTO users (username, salt, encrypted_dek, encrypted_otp_secret) VALUES (?, ?, ?, ?)",
+                (username, salt_bytes, encrypted_dek, encrypted_otp_secret),
+            )
+            con.commit()
 
+    def update_master_password(self, salt_bytes, encrypted_dek, encrypted_otp_secret, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE users SET salt = (?), encrypted_dek = (?), encrypted_otp_secret = (?) WHERE id = (?)",
+                (salt_bytes, encrypted_dek, encrypted_otp_secret, user_id),
+            )
+            con.commit()
 
-def get_language():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT language FROM master WHERE id = 1")
-        row = cur.fetchone()
+    def get_user_id(self, username):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT id FROM users WHERE username = (?)", (username,))
+            salt_bytes = cur.fetchone()[0]
+            return salt_bytes
 
-        if row is None:
-            return "en"
+    def get_salt(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT salt FROM users WHERE id = ?", (user_id,))
+            row = cur.fetchone()
 
-        return row[0]
+            if row is None:
+                return None
+            return row[0]
 
+    def get_dek(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT encrypted_dek FROM users WHERE id = (?)", (user_id,))
+            encrypted_dek = cur.fetchone()[0]
+            return encrypted_dek
 
-def get_otp_secret():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT otp_secret FROM master WHERE id = 1")
-        row = cur.fetchone()
+    def get_mfa(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT mfa_enabled FROM users WHERE id = (?)", (user_id,))
+            row = cur.fetchone()
 
-        if row is None:
-            return False
+            if row is None:
+                return False
+            return bool(row[0])
 
-        return row[0]
+    def get_otp_secret(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "SELECT encrypted_otp_secret FROM users WHERE id = (?)", (user_id,)
+            )
+            row = cur.fetchone()
 
+            if row is None:
+                return False
+            return row[0]
 
-def create_master_password(encrypted_dek, otp_secret):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute(
-            "UPDATE master SET encrypted_dek = (?), otp_secret = (?) WHERE id = 1",
-            (encrypted_dek, otp_secret),
-        )
-        con.commit()
+    def set_otp_secret(self, user_id, encrypted_otp_secret):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE users SET encrypted_otp_secret = (?) WHERE id = (?)",
+                (encrypted_otp_secret, user_id),
+            )
+            con.commit()
 
+    def set_mfa(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("UPDATE users SET mfa_enabled = 1 WHERE id = (?)", (user_id,))
+            con.commit()
 
-def set_salt(salt):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("UPDATE master SET salt = (?) WHERE id = 1", (salt,))
-        con.commit()
+    def set_language(self, user_id, lang):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE users SET language = (?) WHERE id = (?)", (lang, user_id)
+            )
+            con.commit()
 
+    def get_language(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT language FROM users WHERE id = (?)", (user_id,))
+            row = cur.fetchone()
 
-# enable MFA
-def set_mfa():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("UPDATE master SET mfa_enabled = 1 WHERE id = 1")
-        con.commit()
+            if row is None:
+                return "en"
+            return row[0]
 
+    #
+    # page passwords
+    #
+    def read_table_passwords(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "SELECT id, service, username FROM passwords WHERE user_id = (?)",
+                (user_id,),
+            )
+            rows = cur.fetchall()
+            return rows
 
-def disable_mfa():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("UPDATE master SET mfa_enabled = 0 WHERE id = 1")
-        con.commit()
+    # TODO: check id/userid
+    def get_password(self, id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT password FROM passwords WHERE id = (?)", (id,))
+            password = cur.fetchone()[0]
+            return password
 
+    # TODO: same as above
+    def delete_password(self, id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("DELETE FROM passwords WHERE id = (?)", (id,))
+            con.commit()
 
-# get MFA status
-def get_mfa():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT mfa_enabled FROM master WHERE id = 1")
-        row = cur.fetchone()
+    def add_password(self, user_id, service, username, password):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "INSERT INTO passwords (user_id, service, username, password) VALUES (?, ?, ?, ?)",
+                (user_id, service, username, password),
+            )
+            con.commit()
 
-        if row is None:
-            return False
-
-        return bool(row[0])
-
-
-def set_otp_secret(otp_secret):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("UPDATE master SET otp_secret = (?) WHERE id = 1", (otp_secret,))
-        con.commit()
-
-
-def read_table_passwords():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT id, service, username FROM passwords")
-        rows = cur.fetchall()
-        return rows
-
-
-# TODO: fix try except
-def get_password(id):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT password FROM passwords WHERE id = (?)", (id,))
-        password = cur.fetchone()[0]
-        return password
-
-
-def add_password(service, username, password):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute(
-            "INSERT INTO passwords (service, username, password) VALUES (?, ?, ?)",
-            (service, username, password),
-        )
-        con.commit()
-
-
-def delete_password(id):
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("DELETE FROM passwords WHERE id = (?)", (id,))
-        con.commit()
-
-
-def get_salt():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT salt FROM master WHERE id = 1")
-        salt = cur.fetchone()[0]
-        return salt
-
-
-def get_dek():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT encrypted_dek FROM master WHERE id = 1")
-        dek = cur.fetchone()[0]
-        return dek
-
-
-def exist_master_user():
-    with connect() as con:
-        cur = con.cursor()
-        cur.execute("SELECT salt FROM master WHERE id = 1 AND salt IS NOT NULL")
-        return cur.fetchone() is not None
+    def disable_mfa(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("UPDATE users SET mfa_enabled = 0 WHERE id = (?)", (user_id,))
+            con.commit()

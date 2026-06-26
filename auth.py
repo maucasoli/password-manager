@@ -3,15 +3,18 @@ import re
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 import os
-import database as db
+from database import Database
+from crypto import Crypto
+from otp import OTP
 
 
 class Auth:
 
-    def __init__(self, debug, crypto, otp):
-        self.debug = debug
+    def __init__(self, db: Database, crypto: Crypto, otp: OTP, debug):
+        self.db = db
         self.crypto = crypto
         self.otp = otp
+        self.debug = debug
 
     # derive from master password
     def derive_kek(self, password_bytes, salt_bytes):
@@ -57,14 +60,16 @@ class Auth:
         return salt_bytes
 
     # authentication
-    def verify_master_password(self, input_password):
+    def verify_master_password(self, input_username, input_password):
+        user_id = self.db.get_user_id(input_username)
+
         # derive KEK
         password_bytes = input_password.encode("utf-8")
-        salt_bytes = db.get_salt()
+        salt_bytes = self.db.get_salt(user_id)
         kek = self.derive_kek(password_bytes, salt_bytes)
 
         # retrieve DEK
-        encrypted_dek = db.get_dek()
+        encrypted_dek = self.db.get_dek(user_id)
 
         # verify if KEK decrypts DEK, otherwise password is incorrect
         try:
@@ -75,10 +80,10 @@ class Auth:
         # store DEK in memory
         self.crypto.set_dek(dek)
 
-        return True
+        return {"user_id": user_id, "username": input_username, "dek": dek}
 
     # create or change master password
-    def create_master_password(self, input_password, change_password=False):
+    def create_master_password(self, input_password, change_password=False, session=None):
         # derive KEK from master password and salt
         password_bytes = input_password.encode("utf-8")
         salt_bytes = self.create_salt()
@@ -95,13 +100,18 @@ class Auth:
             # create and set DEK to memory
             dek = os.urandom(32)
             self.crypto.set_dek(dek)
-            # create new otp secret
+            # create and set otp secret
             encrypted_otp = self.otp.create_otp_secret()
             self.otp.set_otp_secret(encrypted_otp)
 
         # encrypt DEK with KEK
         encrypted_dek = self.encrypt_dek(dek, kek)
 
+        # TODO: fix username
         # save to database
-        db.create_master_password(encrypted_dek, encrypted_otp)
-        db.set_salt(salt_bytes)
+        if not session:
+            self.db.create_master_password(
+                "teste2", salt_bytes, encrypted_dek, encrypted_otp
+            )
+        else:
+            self.db.update_master_password(salt_bytes, encrypted_dek, encrypted_otp, session.user_id)
