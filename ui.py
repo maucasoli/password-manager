@@ -262,6 +262,10 @@ class GUI:
             master_password = password_entry.get()
             master_password2 = password_entry2.get()
 
+            if not all([username, master_password, master_password2]):
+                tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED"))
+                return
+
             if self.auth.user_exists(username):
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_USER_EXISTS"))
                 return
@@ -597,6 +601,13 @@ class GUI:
                 old_password = old_password_entry.get()
                 new_password = new_password_entry.get()
                 new_password2 = new_password_entry2.get()
+
+                if not all([old_password, new_password, new_password2]):
+                    tk.messagebox.showerror(
+                        t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED")
+                    )
+                    popup.destroy()
+                    return
 
                 if not self.auth.verify_master_password(
                     self.session.username, old_password

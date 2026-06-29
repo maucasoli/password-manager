@@ -18,7 +18,7 @@ class Auth:
 
     # derive from master password
     def derive_kek(self, password_bytes, salt_bytes):
-        memory_cost = 2**18 if self.debug else 2**21
+        memory_cost = 2**18 if self.debug else 2**20
 
         kdf = Argon2id(
             salt=salt_bytes, length=32, iterations=3, lanes=4, memory_cost=memory_cost
