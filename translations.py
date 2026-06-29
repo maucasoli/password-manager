@@ -8,7 +8,7 @@ TRANSLATIONS = {
         "TITLE_CHANGE_PASSWORD": "Change Password",
         "TITLE_CREATE_USER": "Create User",
         # labels
-        "LABEL_MASTER_PASSWORD": "Master password:",
+        "LABEL_MASTER_PASSWORD": "Master password",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choose a master password",
         "LABEL_REENTER_MASTER_PASSWORD": "Re-enter master password",
         "LABEL_SERVICE": "Service",
@@ -21,9 +21,9 @@ TRANSLATIONS = {
         # buttons
         "BTN_LOGIN": "Login",
         "BTN_CREATE_USER": "Create User",
-        "BTN_ENABLE_2FA": "Enable 2FA",
-        "BTN_DISABLE_2FA": "Disable 2FA",
+        "BTN_2FA": "Toggle 2FA",
         "BTN_CHANGE_PASSWORD": "Change master password",
+        "BTN_CHANGE_LANGUAGE": "Switch to French",
         "BTN_CREATE": "Create",
         "BTN_BACK": "Back",
         "BTN_OK": "OK",
@@ -39,7 +39,7 @@ TRANSLATIONS = {
         "DIALOG_2FA_STATUS": "2FA status",
         # dialogs — messages
         "MSG_LOGGED_OUT": "You've been logged out",
-        "MSG_WRONG_PASSWORD": "Incorrect password",
+        "MSG_WRONG_PASSWORD": "Incorrect username or password",
         "MSG_INVALID_TOTP": "Invalid TOTP code",
         "MSG_CONFIGURE_2FA": "Do you want to configure 2FA now?",
         "MSG_DIFFERENT_PASSWORD": "Passwords do not match",
@@ -81,9 +81,9 @@ TRANSLATIONS = {
         # buttons
         "BTN_LOGIN": "Connexion",
         "BTN_CREATE_USER": "Créer un utilisateur",
-        "BTN_ENABLE_2FA": "Activer la 2FA",
-        "BTN_DISABLE_2FA": "Désactiver la 2FA",
+        "BTN_2FA": "Activer/Désactiver la 2FA",
         "BTN_CHANGE_PASSWORD": "Modifier master password",
+        "BTN_CHANGE_LANGUAGE": "Passer à l'anglais",
         "BTN_CREATE": "Créer",
         "BTN_BACK": "Retour",
         "BTN_OK": "OK",
@@ -99,7 +99,7 @@ TRANSLATIONS = {
         "DIALOG_2FA_STATUS": "Statut de la 2FA",
         # dialogs — messages
         "MSG_LOGGED_OUT": "Vous avez été déconnecté",
-        "MSG_WRONG_PASSWORD": "Mot de passe incorrect",
+        "MSG_WRONG_PASSWORD": "Nom d'utilisateur ou mot de passe incorrect",
         "MSG_INVALID_TOTP": "Code TOTP invalide",
         "MSG_CONFIGURE_2FA": "Voulez-vous configurer la 2FA maintenant ?",
         "MSG_DIFFERENT_PASSWORD": "Les mots de passe ne correspondent pas",

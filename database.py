@@ -55,7 +55,9 @@ class Database:
             )
             con.commit()
 
-    def update_master_password(self, salt_bytes, encrypted_dek, encrypted_otp_secret, user_id):
+    def update_master_password(
+        self, salt_bytes, encrypted_dek, encrypted_otp_secret, user_id
+    ):
         with self.connect() as con:
             cur = con.cursor()
             cur.execute(
@@ -68,8 +70,17 @@ class Database:
         with self.connect() as con:
             cur = con.cursor()
             cur.execute("SELECT id FROM users WHERE username = (?)", (username,))
-            salt_bytes = cur.fetchone()[0]
-            return salt_bytes
+            row = cur.fetchone()
+
+            if row is None:
+                return None
+            return row[0]
+
+    def username_exists(self, username):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("SELECT 1 FROM users WHERE username = (?)", (username,))
+            return cur.fetchone() is not None
 
     def get_salt(self, user_id):
         with self.connect() as con:
@@ -85,8 +96,11 @@ class Database:
         with self.connect() as con:
             cur = con.cursor()
             cur.execute("SELECT encrypted_dek FROM users WHERE id = (?)", (user_id,))
-            encrypted_dek = cur.fetchone()[0]
-            return encrypted_dek
+            row = cur.fetchone()
+
+            if row is None:
+                return None
+            return row[0]
 
     def get_mfa(self, user_id):
         with self.connect() as con:
@@ -119,10 +133,12 @@ class Database:
             )
             con.commit()
 
-    def set_mfa(self, user_id):
+    def set_mfa(self, username):
         with self.connect() as con:
             cur = con.cursor()
-            cur.execute("UPDATE users SET mfa_enabled = 1 WHERE id = (?)", (user_id,))
+            cur.execute(
+                "UPDATE users SET mfa_enabled = 1 WHERE username = (?)", (username,)
+            )
             con.commit()
 
     def set_language(self, user_id, lang):
@@ -156,15 +172,16 @@ class Database:
             rows = cur.fetchall()
             return rows
 
-    # TODO: check id/userid
     def get_password(self, id):
         with self.connect() as con:
             cur = con.cursor()
             cur.execute("SELECT password FROM passwords WHERE id = (?)", (id,))
-            password = cur.fetchone()[0]
-            return password
+            row = cur.fetchone()
 
-    # TODO: same as above
+            if row is None:
+                return None
+            return row[0]
+
     def delete_password(self, id):
         with self.connect() as con:
             cur = con.cursor()

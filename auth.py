@@ -59,7 +59,9 @@ class Auth:
         salt_bytes = secrets.token_bytes(32)
         return salt_bytes
 
-    # authentication
+    def user_exists(self, username):
+        return self.db.username_exists(username)
+
     def verify_master_password(self, input_username, input_password):
         user_id = self.db.get_user_id(input_username)
 
@@ -83,13 +85,15 @@ class Auth:
         return {"user_id": user_id, "username": input_username, "dek": dek}
 
     # create or change master password
-    def create_master_password(self, input_password, change_password=False, session=None):
+    def create_master_password(
+        self, input_password, username=None, change_password=False, session=None
+    ):
         # derive KEK from master password and salt
         password_bytes = input_password.encode("utf-8")
         salt_bytes = self.create_salt()
         kek = self.derive_kek(password_bytes, salt_bytes)
 
-        # if user is changing password
+        # if user is changing master password
         if change_password:
             # get DEK and otp secret (encrypted) from memory
             dek = self.crypto.get_dek()
@@ -107,11 +111,12 @@ class Auth:
         # encrypt DEK with KEK
         encrypted_dek = self.encrypt_dek(dek, kek)
 
-        # TODO: fix username
         # save to database
         if not session:
             self.db.create_master_password(
-                "teste2", salt_bytes, encrypted_dek, encrypted_otp
+                username, salt_bytes, encrypted_dek, encrypted_otp
             )
         else:
-            self.db.update_master_password(salt_bytes, encrypted_dek, encrypted_otp, session.user_id)
+            self.db.update_master_password(
+                salt_bytes, encrypted_dek, encrypted_otp, session.user_id
+            )
