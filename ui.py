@@ -109,6 +109,7 @@ class GUI:
             photo = self.otp.generate_uri()
         except Exception:
             msg.showerror(t("DIALOG_ERROR"), "Failed to generate QR code")
+            popup.destroy()
             return
 
         label = tk.Label(popup, image=photo)
@@ -764,6 +765,8 @@ class GUI:
                 popup.destroy()
 
             item = self.tree.focus()
+            if not item:
+                return
             values = self.tree.item(item, "values")
             item_id = values[0]
             encrypted_password = self.db.get_password(item_id)
