@@ -1,4 +1,5 @@
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.exceptions import InvalidTag
 import os
 
 
@@ -36,5 +37,8 @@ class Crypto:
 
         nonce = ciphertext[:12]
         encrypted_password = ciphertext[12:]
-        password_bytes = self.aesgcm.decrypt(nonce, encrypted_password, None)
+        try:
+            password_bytes = self.aesgcm.decrypt(nonce, encrypted_password, None)
+        except InvalidTag:
+            raise ValueError("Decryption failed")
         return password_bytes

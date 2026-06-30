@@ -76,6 +76,8 @@ class Auth:
             return None
 
         failed_attempts = self.db.get_failed_attempts(input_username)
+        if failed_attempts is None:
+            return False
         # >= is safer than ==
         if failed_attempts >= 3:
             # lock for 180s

@@ -30,14 +30,20 @@ class OTP:
         return encrypted_otp
 
     def generate_totp(self):
-        secret = self.crypto.decrypt(self.secret).decode("utf-8")
+        try:
+            secret = self.crypto.decrypt(self.secret).decode("utf-8")
+        except Exception:
+            raise RuntimeError("Failed to decrypt OTP secret")
         self.totp = pyotp.TOTP(secret)
         if self.debug:
             print("TOTP:", self.totp.now())
         return self.totp.now()
 
     def generate_uri(self):
-        secret = self.crypto.decrypt(self.secret).decode("utf-8")
+        try:
+            secret = self.crypto.decrypt(self.secret).decode("utf-8")
+        except Exception:
+            raise RuntimeError("Failed to decrypt OTP secret")
         buffer = BytesIO()
 
         uri = pyotp.TOTP(secret).provisioning_uri(
@@ -52,4 +58,6 @@ class OTP:
         return photo
 
     def verify_totp(self, totp):
+        if self.totp is None:
+            return False
         return self.totp.verify(totp)

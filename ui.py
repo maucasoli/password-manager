@@ -105,7 +105,12 @@ class GUI:
         self.center_window(popup, 300, 250)
         popup.focus_set()
 
-        photo = self.otp.generate_uri()
+        try:
+            photo = self.otp.generate_uri()
+        except Exception:
+            msg.showerror(t("DIALOG_ERROR"), "Failed to generate QR code")
+            return
+
         label = tk.Label(popup, image=photo)
         label.image = photo
         label.pack()
@@ -179,8 +184,9 @@ class GUI:
                 self.page_login()
                 return
 
-            # return {user_id, username, dek} or None
+            # return {user_id, username, dek} or None or False
             result = self.auth.verify_master_password(input_username, input_password)
+
             # wrong password
             if result is False:
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
@@ -379,8 +385,12 @@ class GUI:
             password2 = password_entry2.get()
 
             if password == password2:
-                password_bytes = password.encode("utf-8")
-                encrypted_password = self.crypto.encrypt(password_bytes)
+                try:
+                    password_bytes = password.encode("utf-8")
+                    encrypted_password = self.crypto.encrypt(password_bytes)
+                except Exception:
+                    msg.showerror(t("DIALOG_ERROR"), "Encryption failed")
+                    return
 
                 if service and username and password:
                     self.db.add_password(
@@ -627,13 +637,27 @@ class GUI:
                     popup.focus_set()
                     return
 
-                if not self.auth.verify_master_password(
+                # return {user_id, username, dek} or None or False
+                result = self.auth.verify_master_password(
                     self.session.username, old_password
-                ):
+                )
+
+                # wrong password
+                if result is False:
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                     popup.focus_set()
                     return
 
+                # account locked
+                if result is None:
+                    for widget in self.root.winfo_children():
+                        widget.destroy()
+                    self.clear_memory()
+                    msg.showwarning(t("DIALOG_ALERT"), t("MSG_LOGGED_OUT"))
+                    self.page_login()
+                    return
+
+                # change password
                 if new_password == new_password2:
                     result = self.auth.validate_master_password(new_password)
 
@@ -647,7 +671,7 @@ class GUI:
                         popup.destroy()
                     else:
                         msg.showwarning(t("DIALOG_ERROR"), result)
-                        popup.destroy()
+                        popup.focus_set()
                 else:
                     msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
                     popup.focus_set()
@@ -743,7 +767,11 @@ class GUI:
             values = self.tree.item(item, "values")
             item_id = values[0]
             encrypted_password = self.db.get_password(item_id)
-            real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
+            try:
+                real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
+            except Exception:
+                msg.showerror(t("DIALOG_ERROR"), "Failed to decrypt password")
+                return
             # msg.showinfo(t("LABEL_PASSWORD"), real_password)
 
             popup = tk.Toplevel()
@@ -797,8 +825,11 @@ class GUI:
             values = self.tree.item(item, "values")
             item_id = values[0]
             encrypted_password = self.db.get_password(item_id)
-            real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
-
+            try:
+                real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
+            except Exception:
+                msg.showerror(t("DIALOG_ERROR"), "Failed to decrypt password")
+                return
             self.root.clipboard_clear()
             self.root.clipboard_append(real_password)
             # clear clipboard after 30s
