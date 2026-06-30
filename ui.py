@@ -38,8 +38,9 @@ class GUI:
         self.lang = "en"
 
         # for auto-lock
-        self.last_activity = time.time()
         self.locked = False
+        self.lock_id = None
+        self.last_activity = time.time()
         self.root.bind_all("<Key>", self.update_activity)
         self.root.bind_all("<Button>", self.update_activity)
         self.root.bind_all("<Motion>", self.update_activity)
@@ -47,6 +48,8 @@ class GUI:
 
     def run(self):
         self.page_login()
+        # call only once
+        self.root.mainloop()
 
     def set_language(self, auth=False):
         if not auth:
@@ -67,7 +70,9 @@ class GUI:
         self.last_activity = time.time()
 
     def check_lock(self):
-        if self.debug:
+        self.lock_id = None
+
+        if self.debug or self.session is None:
             return
 
         if not self.locked:
@@ -81,8 +86,9 @@ class GUI:
                 self.locked = True
                 msg.showwarning(t("DIALOG_ALERT"), t("MSG_LOGGED_OUT"))
                 self.page_login()
+                return
 
-        self.root.after(1000, self.check_lock)
+        self.lock_id = self.root.after(1000, self.check_lock)
 
     def center_window(self, root, width, height):
         screen_width = root.winfo_screenwidth()
@@ -171,12 +177,14 @@ class GUI:
             if not self.auth.user_exists(input_username):
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                 self.page_login()
+                return
 
             # return {user_id, username, dek} or None
             result = self.auth.verify_master_password(input_username, input_password)
             if result is False:
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                 self.page_login()
+                return
 
             self.session = Session(result["user_id"], result["username"], result["dek"])
             self.set_language(auth=True)
@@ -253,8 +261,6 @@ class GUI:
             height=2,
         )
         btn_lang.pack(side="right", padx=20, pady=(0, 10))
-
-        self.root.mainloop()
 
     def create_master_password(self, root):
         def on_ok(event=None):
@@ -383,7 +389,7 @@ class GUI:
                     popup.focus_set()
             else:
                 msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
-                self.add_password()
+                popup.focus_set()
 
         def on_generate():
             password = generator.generate_password()
@@ -480,6 +486,8 @@ class GUI:
 
         # start idle timer after login
         self.locked = False
+        if self.lock_id is not None:
+            self.root.after_cancel(self.lock_id)
         self.check_lock()
 
         # top frame (label title, button logout)
@@ -561,6 +569,8 @@ class GUI:
         btn_language.pack(side="right", padx=(0, 5), pady=(2, 2))
 
         def on_logout():
+            if self.lock_id is not None:
+                self.root.after_cancel(self.lock_id)
             for widget in root.winfo_children():
                 widget.destroy()
             self.clear_memory()
@@ -602,18 +612,19 @@ class GUI:
                 new_password = new_password_entry.get()
                 new_password2 = new_password_entry2.get()
 
+                # all fields required
                 if not all([old_password, new_password, new_password2]):
                     tk.messagebox.showerror(
                         t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED")
                     )
-                    popup.destroy()
+                    popup.focus_set()
                     return
 
                 if not self.auth.verify_master_password(
                     self.session.username, old_password
                 ):
                     tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
-                    popup.destroy()
+                    popup.focus_set()
                     return
 
                 if new_password == new_password2:
@@ -632,7 +643,7 @@ class GUI:
                         popup.destroy()
                 else:
                     msg.showwarning(t("DIALOG_ERROR"), t("MSG_DIFFERENT_PASSWORD"))
-                    popup.destroy()
+                    popup.focus_set()
 
             #
             popup = tk.Toplevel()
@@ -718,12 +729,32 @@ class GUI:
         self.load_data(self.tree)
 
         def show_password(event):
+            def on_close():
+                popup.destroy()
+
             item = self.tree.focus()
             values = self.tree.item(item, "values")
             item_id = values[0]
             encrypted_password = self.db.get_password(item_id)
             real_password = self.crypto.decrypt(encrypted_password).decode("utf-8")
-            msg.showinfo(t("LABEL_PASSWORD"), real_password)
+            # msg.showinfo(t("LABEL_PASSWORD"), real_password)
+
+            popup = tk.Toplevel()
+            popup.configure(bg="#1A1D2E")
+            popup.title(t("LABEL_PASSWORD"))
+            self.center_window(popup, 200, 120)
+            self.theme.label(popup, real_password, ("Segoe UI", 12)).pack(pady=20)
+            self.theme.button(
+                popup,
+                on_close,
+                t("BTN_OK"),
+                font=("Segoe UI", 12, "bold"),
+                bg="#4F6EF7",
+                width=10,
+                height=1,
+            ).pack(pady=0)
+            popup.bind("<Return>", lambda e: on_close())
+            popup.focus_set()
 
         # double click to show
         self.tree.bind("<Double-1>", show_password)

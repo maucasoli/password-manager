@@ -6,6 +6,7 @@ import os
 from database import Database
 from crypto import Crypto
 from otp import OTP
+from translations import t
 
 
 class Auth:
@@ -44,15 +45,15 @@ class Auth:
     def validate_master_password(self, password):
         if not self.debug:
             if len(password) < 8:
-                return "Password must be at least 8 characters long."
+                return t("VALIDATION_PASSWORD_MIN_LENGTH")
             if not re.search(r"[a-z]", password):
-                return "Password must contain at least one lowercase letter."
+                return t("VALIDATION_PASSWORD_LOWERCASE")
             if not re.search(r"[A-Z]", password):
-                return "Password must contain at least one uppercase letter."
+                return t("VALIDATION_PASSWORD_UPPERCASE")
             if not re.search(r"\d", password):
-                return "Password must contain at least one number."
+                return t("VALIDATION_PASSWORD_NUMBER")
             if not re.search(r"[!@#$%&*()_?-]", password):
-                return "Password must contain at least one special character."
+                return t("VALIDATION_PASSWORD_SPECIAL_CHAR")
         return True
 
     def create_salt(self):

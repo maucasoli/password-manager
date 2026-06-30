@@ -68,7 +68,7 @@ TRANSLATIONS = {
         "TITLE_CHANGE_PASSWORD": "Modifier le mot de passe",
         "TITLE_CREATE_USER": "Créer un utilisateur",
         # labels
-        "LABEL_MASTER_PASSWORD": "Mot de passe principal :",
+        "LABEL_MASTER_PASSWORD": "Mot de passe principal",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choisissez un mot de passe principal",
         "LABEL_REENTER_MASTER_PASSWORD": "Saisissez de nouveau le mot de passe principal",
         "LABEL_SERVICE": "Service",
