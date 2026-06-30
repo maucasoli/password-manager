@@ -7,6 +7,8 @@ from database import Database
 from crypto import Crypto
 from otp import OTP
 from translations import t
+from datetime import datetime, timedelta
+import tkinter.messagebox as msg
 
 
 class Auth:
@@ -63,7 +65,28 @@ class Auth:
     def user_exists(self, username):
         return self.db.username_exists(username)
 
+    # authentication
     def verify_master_password(self, input_username, input_password):
+        # return datetime or None
+        locked_until = self.db.get_locked_until(input_username)
+        if locked_until is not None and locked_until > datetime.now():
+            msg.showwarning(
+                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + str(locked_until)
+            )
+            return None
+
+        failed_attempts = self.db.get_failed_attempts(input_username)
+        # >= is safer than ==
+        if failed_attempts >= 3:
+            # lock for 180s
+            locked_until = datetime.now() + timedelta(seconds=180)
+            self.db.set_locked_until(input_username, locked_until)
+            self.db.set_failed_attempts(input_username, 0)
+            msg.showwarning(
+                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + str(locked_until)
+            )
+            return None
+
         user_id = self.db.get_user_id(input_username)
 
         # derive KEK
@@ -74,14 +97,21 @@ class Auth:
         # retrieve DEK
         encrypted_dek = self.db.get_dek(user_id)
 
-        # verify if KEK decrypts DEK, otherwise password is incorrect
+        # verify if KEK decrypts DEK
         try:
             dek = self.decrypt_dek(encrypted_dek, kek)
+        # otherwise password is incorrect
         except Exception:
+            # add +1 to failed attempts
+            self.db.set_failed_attempts(input_username, failed_attempts + 1)
             return False
 
         # store DEK in memory
         self.crypto.set_dek(dek)
+
+        # reset failed attempts
+        self.db.set_failed_attempts(input_username, 0)
+        self.db.set_locked_until(input_username, None)
 
         return {"user_id": user_id, "username": input_username, "dek": dek}
 

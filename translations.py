@@ -7,6 +7,7 @@ TRANSLATIONS = {
         "TITLE_ADD_PASSWORD": "Add Password",
         "TITLE_CHANGE_PASSWORD": "Change Password",
         "TITLE_CREATE_USER": "Create User",
+        "TITLE_ACCOUNT_LOCKED": "Account Locked",
         # labels
         "LABEL_MASTER_PASSWORD": "Master password",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choose a master password",
@@ -38,6 +39,7 @@ TRANSLATIONS = {
         "DIALOG_SUCCESS": "Success",
         "DIALOG_2FA_STATUS": "2FA status",
         # dialogs — messages
+        "MSG_ACCOUNT_LOCKED": "Your account is locked until: ",
         "MSG_LOGGED_OUT": "You've been logged out",
         "MSG_WRONG_PASSWORD": "Incorrect username or password",
         "MSG_INVALID_TOTP": "Invalid TOTP code",
@@ -67,6 +69,7 @@ TRANSLATIONS = {
         "TITLE_ADD_PASSWORD": "Ajouter un mot de passe",
         "TITLE_CHANGE_PASSWORD": "Modifier le mot de passe",
         "TITLE_CREATE_USER": "Créer un utilisateur",
+        "TITLE_ACCOUNT_LOCKED": "Compte verrouillé",
         # labels
         "LABEL_MASTER_PASSWORD": "Mot de passe principal",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choisissez un mot de passe principal",
@@ -98,6 +101,7 @@ TRANSLATIONS = {
         "DIALOG_SUCCESS": "Succès",
         "DIALOG_2FA_STATUS": "Statut de la 2FA",
         # dialogs — messages
+        "MSG_ACCOUNT_LOCKED": "Votre compte est verrouillé jusqu'à : ",
         "MSG_LOGGED_OUT": "Vous avez été déconnecté",
         "MSG_WRONG_PASSWORD": "Nom d'utilisateur ou mot de passe incorrect",
         "MSG_INVALID_TOTP": "Code TOTP invalide",

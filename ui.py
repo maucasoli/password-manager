@@ -181,21 +181,28 @@ class GUI:
 
             # return {user_id, username, dek} or None
             result = self.auth.verify_master_password(input_username, input_password)
+            # wrong password
             if result is False:
                 tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD"))
                 self.page_login()
                 return
 
-            self.session = Session(result["user_id"], result["username"], result["dek"])
-            self.set_language(auth=True)
+            # account not locked
+            if result is not None:
+                self.session = Session(
+                    result["user_id"], result["username"], result["dek"]
+                )
+                self.set_language(auth=True)
 
-            # check if 2FA is enabled
-            if self.db.get_mfa(self.session.user_id):
-                self.otp.set_otp_secret(self.db.get_otp_secret(self.session.user_id))
-                if check_totp():
+                # check if 2FA is enabled
+                if self.db.get_mfa(self.session.user_id):
+                    self.otp.set_otp_secret(
+                        self.db.get_otp_secret(self.session.user_id)
+                    )
+                    if check_totp():
+                        self.page_passwords(self.root)
+                else:
                     self.page_passwords(self.root)
-            else:
-                self.page_passwords(self.root)
 
         #
         self.center_window(self.root, self.width, self.height)
@@ -782,6 +789,10 @@ class GUI:
         # when right-click > popup_menu
         self.tree.bind("<Button-3>", popup_menu)
 
+        def clear_clipboard():
+            self.root.clipboard_clear()
+            self.root.clipboard_append("")
+
         def copy_password(item):
             values = self.tree.item(item, "values")
             item_id = values[0]
@@ -790,6 +801,8 @@ class GUI:
 
             self.root.clipboard_clear()
             self.root.clipboard_append(real_password)
+            # clear clipboard after 30s
+            self.root.after(30000, clear_clipboard)
 
         def delete_password(item):
             # get all columns

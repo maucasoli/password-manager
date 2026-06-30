@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 
 class Database:
@@ -26,7 +27,9 @@ class Database:
                 "encrypted_dek BLOB,"
                 "encrypted_otp_secret BLOB,"
                 "mfa_enabled INTEGER DEFAULT 0,"
-                "language TEXT DEFAULT 'en'"
+                "language TEXT DEFAULT 'en',"
+                "failed_attempts INTEGER DEFAULT 0,"
+                "locked_until DATETIME"
                 ")"
             )
             cur.execute(
@@ -44,6 +47,54 @@ class Database:
     #
     # page login
     #
+    def get_failed_attempts(self, username):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "SELECT failed_attempts FROM users WHERE username = (?)", (username,)
+            )
+            row = cur.fetchone()
+
+            if row is None:
+                return None
+            return row[0]
+
+    def set_failed_attempts(self, username, attempts):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE users SET failed_attempts = (?) WHERE username = (?)",
+                (attempts, username),
+            )
+            con.commit()
+
+    def get_locked_until(self, username):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "SELECT locked_until FROM users WHERE username = (?)", (username,)
+            )
+            row = cur.fetchone()
+
+            if row is None:
+                return None
+
+            result = row[0]
+
+            if result is None:
+                return None
+
+            return datetime.fromisoformat(result)
+
+    def set_locked_until(self, username, locked_until):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE users SET locked_until = (?) WHERE username = (?)",
+                (locked_until, username),
+            )
+            con.commit()
+
     def create_master_password(
         self, username, salt_bytes, encrypted_dek, encrypted_otp_secret
     ):
@@ -85,7 +136,7 @@ class Database:
     def get_salt(self, user_id):
         with self.connect() as con:
             cur = con.cursor()
-            cur.execute("SELECT salt FROM users WHERE id = ?", (user_id,))
+            cur.execute("SELECT salt FROM users WHERE id = (?)", (user_id,))
             row = cur.fetchone()
 
             if row is None:
