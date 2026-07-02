@@ -35,7 +35,8 @@ class Database:
                 "mfa_enabled INTEGER DEFAULT 0,"
                 "language TEXT DEFAULT 'en',"
                 "failed_attempts INTEGER DEFAULT 0,"
-                "locked_until DATETIME"
+                "locked_until DATETIME,"
+                "created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))"
                 ")"
             )
             cur.execute(
@@ -45,6 +46,18 @@ class Database:
                 "service BLOB NOT NULL,"
                 "username BLOB NOT NULL,"
                 "password BLOB NOT NULL,"
+                "created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),"
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            cur.execute(
+                "CREATE TABLE IF NOT EXISTS recovery_codes ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "user_id INTEGER NOT NULL,"
+                "code_hash TEXT NOT NULL,"
+                "used INTEGER NOT NULL DEFAULT 0,"
+                "created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),"
+                "used_at TEXT,"
                 "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
                 ")"
             )
@@ -190,11 +203,40 @@ class Database:
             )
             con.commit()
 
-    def set_mfa(self, username):
+    def set_mfa(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute("UPDATE users SET mfa_enabled = 1 WHERE id = (?)", (user_id,))
+            con.commit()
+
+    def set_recovery_code(self, user_id, code_hash):
         with self.connect() as con:
             cur = con.cursor()
             cur.execute(
-                "UPDATE users SET mfa_enabled = 1 WHERE username = (?)", (username,)
+                "INSERT INTO recovery_codes (user_id, code_hash) VALUES (?, ?)",
+                (user_id, code_hash),
+            )
+            con.commit()
+
+    def get_recovery_code(self, user_id):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "SELECT code_hash FROM recovery_codes WHERE user_id = (?) AND used = 0",
+                (user_id,),
+            )
+            row = cur.fetchone()
+
+            if row is None:
+                return None
+            return row[0]
+
+    def update_recovery_code(self, user_id, used, used_at):
+        with self.connect() as con:
+            cur = con.cursor()
+            cur.execute(
+                "UPDATE recovery_codes SET used = (?), used_at = (?) WHERE user_id = (?) AND used = 0",
+                (used, used_at, user_id),
             )
             con.commit()
 

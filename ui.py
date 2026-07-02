@@ -10,6 +10,7 @@ from crypto import Crypto
 from otp import OTP
 from auth import Auth
 from session import Session
+from datetime import datetime
 
 
 class GUI:
@@ -32,7 +33,7 @@ class GUI:
         self.theme = Theme()
 
         self.width = 400
-        self.height = 350
+        self.height = 400
         self.tree = None
 
         self.lang = "en"
@@ -211,6 +212,68 @@ class GUI:
                 else:
                     self.page_passwords(self.root)
 
+        def recovery_code():
+            def on_ok(event=None):
+                username = username_entry.get()
+                password = password_entry.get()
+                code = code_entry.get()
+
+                if code and username and password:
+                    pass
+                else:
+                    tk.messagebox.showerror(
+                        t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED")
+                    )
+                    popup.focus_set()
+
+            #
+            popup = tk.Toplevel()
+            popup.configure(bg="#1A1D2E")
+            self.center_window(popup, 300, 300)
+            popup.title(t("TITLE_RECOVER_CODE"))
+
+            # label username
+            self.theme.label(
+                popup, t("LABEL_USERNAME"), ("Segoe UI", 12), fg="#889082"
+            ).pack(pady=(5, 2))
+
+            # entry username
+            username_entry = self.theme.entry(popup, font=("Segoe UI", 12))
+            username_entry.pack(pady=(0, 10))
+            username_entry.focus_set()
+
+            # label password
+            self.theme.label(
+                popup, t("LABEL_PASSWORD"), ("Segoe UI", 12), fg="#889082"
+            ).pack(pady=(0, 2))
+
+            # entry password
+            password_entry = self.theme.entry(popup, show="*", font=("Segoe UI", 12))
+            password_entry.pack(pady=(0, 10))
+
+            # label recovery code
+            self.theme.label(
+                popup, t("LABEL_RECOVERY_CODE"), ("Segoe UI", 12), fg="#889082"
+            ).pack(pady=(0, 2))
+
+            # entry recovery code
+            code_entry = self.theme.entry(popup, font=("Segoe UI", 12))
+            code_entry.pack(pady=(0, 10))
+            # allow enter button
+            code_entry.bind("<Return>", on_ok)
+
+            # button ok
+            btn_ok = self.theme.button(
+                popup,
+                on_ok,
+                t("BTN_OK"),
+                font=("Segoe UI", 12, "bold"),
+                bg="#4F6EF7",
+                width=18,
+                height=1,
+            )
+            btn_ok.pack(pady=10)
+
         #
         self.center_window(self.root, self.width, self.height)
         self.root.title(t("TITLE_PASSWORD_MANAGER"))
@@ -262,6 +325,18 @@ class GUI:
             width=18,
             height=1,
         )
+        btn_create_user.pack(pady=(0, 10))
+
+        # button lost 2FA
+        btn_create_user = self.theme.button(
+            self.root,
+            recovery_code,
+            t("BTN_RECOVERY_CODE"),
+            font=("Segoe UI", 12, "bold"),
+            bg="#2F3355",
+            width=18,
+            height=1,
+        )
         btn_create_user.pack(pady=(0, 0))
 
         # button language
@@ -299,7 +374,17 @@ class GUI:
 
                     response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
                     if response:
-                        self.db.set_mfa(username)
+                        user_id = self.db.get_user_id(username)
+                        self.db.set_mfa(user_id)
+                        # create recovery code
+                        result = self.auth.create_recovery_code()
+                        code = result["code"]
+                        code_hash = result["code_hash"]
+                        # only time showing recovery code
+                        print(code)
+                        # save code_hash to database
+                        self.db.set_recovery_code(user_id, code_hash)
+                        # show QR code image
                         self.show_qrcode()
                     self.page_login()
                 else:
@@ -612,12 +697,24 @@ class GUI:
                 )
                 if response:
                     self.db.disable_mfa(self.session.user_id)
+                    # update recovery code
+                    self.db.update_recovery_code(
+                        self.session.user_id, used=1, used_at=datetime.now()
+                    )
                     msg.showinfo(t("DIALOG_2FA_STATUS"), t("MSG_2FA_DISABLED"))
             else:
                 # ask if they want to enable 2FA
                 response = msg.askyesno(t("DIALOG_SUCCESS"), t("MSG_CONFIGURE_2FA"))
                 if response:
-                    self.db.set_mfa(self.session.username)
+                    self.db.set_mfa(self.session.user_id)
+
+                    # create recovery code
+                    result = self.auth.create_recovery_code()
+                    code = result["code"]
+                    code_hash = result["code_hash"]
+                    # only time showing recovery code
+                    print(code)
+                    self.db.set_recovery_code(self.session.user_id, code_hash)
 
                     # create and set otp secret
                     encrypted_otp = self.otp.create_otp_secret()

@@ -9,6 +9,9 @@ from otp import OTP
 from translations import t
 from datetime import datetime, timedelta
 import tkinter.messagebox as msg
+import generator
+import hashlib
+from hmac import compare_digest
 
 
 class Auth:
@@ -61,6 +64,16 @@ class Auth:
     def create_salt(self):
         salt_bytes = secrets.token_bytes(32)
         return salt_bytes
+
+    def create_recovery_code(self):
+        code = generator.generate_recovery_code()
+        # hexdigest -> string
+        code_hash = hashlib.sha256(code.encode()).hexdigest()
+        return {"code": code, "code_hash": code_hash}
+
+    def verify_recovery_code(self, user_id, code):
+        code_hash = self.db.get_recovery_code(user_id)
+        return
 
     def user_exists(self, username):
         return self.db.username_exists(username)

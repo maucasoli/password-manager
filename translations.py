@@ -8,6 +8,7 @@ TRANSLATIONS = {
         "TITLE_CHANGE_PASSWORD": "Change Password",
         "TITLE_CREATE_USER": "Create User",
         "TITLE_ACCOUNT_LOCKED": "Account Locked",
+        "TITLE_RECOVER_CODE": "Recover Code",
         # labels
         "LABEL_MASTER_PASSWORD": "Master password",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choose a master password",
@@ -22,6 +23,7 @@ TRANSLATIONS = {
         # buttons
         "BTN_LOGIN": "Login",
         "BTN_CREATE_USER": "Create User",
+        "BTN_RECOVERY_CODE": "Lost access to 2FA?",
         "BTN_2FA": "Toggle 2FA",
         "BTN_CHANGE_PASSWORD": "Change master password",
         "BTN_CHANGE_LANGUAGE": "Switch to French",
@@ -70,6 +72,7 @@ TRANSLATIONS = {
         "TITLE_CHANGE_PASSWORD": "Modifier le mot de passe",
         "TITLE_CREATE_USER": "Créer un utilisateur",
         "TITLE_ACCOUNT_LOCKED": "Compte verrouillé",
+        "TITLE_RECOVER_CODE": "Code de récupération",
         # labels
         "LABEL_MASTER_PASSWORD": "Mot de passe principal",
         "LABEL_CHOOSE_MASTER_PASSWORD": "Choisissez un mot de passe principal",
@@ -84,6 +87,7 @@ TRANSLATIONS = {
         # buttons
         "BTN_LOGIN": "Connexion",
         "BTN_CREATE_USER": "Créer un utilisateur",
+        "BTN_RECOVERY_CODE": "Accès perdu à la 2FA ?",
         "BTN_2FA": "Activer/Désactiver la 2FA",
         "BTN_CHANGE_PASSWORD": "Modifier master password",
         "BTN_CHANGE_LANGUAGE": "Passer à l'anglais",
