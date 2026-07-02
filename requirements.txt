@@ -3,3 +3,4 @@ cryptography
 pyotp
 qrcode
 Pillow
+platformdirs

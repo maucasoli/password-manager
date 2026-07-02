@@ -1,14 +1,20 @@
 import sqlite3
+import os
+import shutil
 from datetime import datetime
+from platformdirs import user_data_dir
+
+DATA_DIR = user_data_dir("PasswordManager", appauthor=False)
+DB_PATH = os.path.join(DATA_DIR, "database.db")
 
 
 class Database:
 
     def __init__(self):
-        pass
+        os.makedirs(DATA_DIR, exist_ok=True)
 
     def connect(self):
-        con = sqlite3.connect("database.db")
+        con = sqlite3.connect(DB_PATH)
         # needed for foreign key
         con.execute("PRAGMA foreign_keys = ON")
         return con
