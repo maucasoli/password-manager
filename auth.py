@@ -71,21 +71,8 @@ class Auth:
         locked_until = self.db.get_locked_until(input_username)
         if locked_until is not None and locked_until > datetime.now():
             msg.showwarning(
-                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + locked_until.strftime("%Y-%m-%d %H:%M:%S")
-            )
-            return None
-
-        failed_attempts = self.db.get_failed_attempts(input_username)
-        if failed_attempts is None:
-            return False
-        # >= is safer than ==
-        if failed_attempts >= 3:
-            # lock for 180s
-            locked_until = datetime.now() + timedelta(seconds=180)
-            self.db.set_locked_until(input_username, locked_until)
-            self.db.set_failed_attempts(input_username, 0)
-            msg.showwarning(
-                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + locked_until.strftime("%Y-%m-%d %H:%M:%S")
+                t("TITLE_ACCOUNT_LOCKED"),
+                t("MSG_ACCOUNT_LOCKED") + locked_until.strftime("%Y-%m-%d %H:%M:%S"),
             )
             return None
 
@@ -104,8 +91,27 @@ class Auth:
             dek = self.decrypt_dek(encrypted_dek, kek)
         # otherwise password is incorrect
         except Exception:
+            # read failed attempts
+            failed_attempts = self.db.get_failed_attempts(input_username)
+            if failed_attempts is None:
+                return False
+
             # add +1 to failed attempts
-            self.db.set_failed_attempts(input_username, failed_attempts + 1)
+            failed_attempts += 1
+            self.db.set_failed_attempts(input_username, failed_attempts)
+
+            # >= is safer than ==
+            if failed_attempts >= 3:
+                # lock for 180s
+                locked_until = datetime.now() + timedelta(seconds=180)
+                self.db.set_locked_until(input_username, locked_until)
+                self.db.set_failed_attempts(input_username, 0)
+                msg.showwarning(
+                    t("TITLE_ACCOUNT_LOCKED"),
+                    t("MSG_ACCOUNT_LOCKED")
+                    + locked_until.strftime("%Y-%m-%d %H:%M:%S"),
+                )
+                return
             return False
 
         # store DEK in memory
