@@ -71,7 +71,7 @@ class Auth:
         locked_until = self.db.get_locked_until(input_username)
         if locked_until is not None and locked_until > datetime.now():
             msg.showwarning(
-                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + str(locked_until)
+                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + locked_until.strftime("%Y-%m-%d %H:%M:%S")
             )
             return None
 
@@ -85,7 +85,7 @@ class Auth:
             self.db.set_locked_until(input_username, locked_until)
             self.db.set_failed_attempts(input_username, 0)
             msg.showwarning(
-                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + str(locked_until)
+                t("TITLE_ACCOUNT_LOCKED"), t("MSG_ACCOUNT_LOCKED") + locked_until.strftime("%Y-%m-%d %H:%M:%S")
             )
             return None
 
