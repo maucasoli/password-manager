@@ -387,6 +387,10 @@ class GUI:
 
             if password == password2:
                 try:
+                    service_bytes = service.encode("utf-8")
+                    encrypted_service = self.crypto.encrypt(service_bytes)
+                    username_bytes = username.encode("utf-8")
+                    encrypted_username = self.crypto.encrypt(username_bytes)
                     password_bytes = password.encode("utf-8")
                     encrypted_password = self.crypto.encrypt(password_bytes)
                 except Exception:
@@ -395,7 +399,10 @@ class GUI:
 
                 if service and username and password:
                     self.db.add_password(
-                        self.session.user_id, service, username, encrypted_password
+                        self.session.user_id,
+                        encrypted_service,
+                        encrypted_username,
+                        encrypted_password,
                     )
                     msg.showinfo(t("DIALOG_SUCCESS"), t("MSG_PASSWORD_ADDED"))
                     popup.destroy()
@@ -487,15 +494,18 @@ class GUI:
         btn_generate_password.pack(pady=0)
 
     def load_data(self, tree):
-        passwords = self.db.read_table_passwords(self.session.user_id)
+        # id, service, username only
+        rows = self.db.read_table_passwords(self.session.user_id)
 
         # clean table
         for item in tree.get_children():
             tree.delete(item)
 
         # populate table
-        for pw in passwords:
-            id, service, username = pw
+        for row in rows:
+            id, encrypted_service, encrypted_username = row
+            service = self.crypto.decrypt(encrypted_service)
+            username = self.crypto.decrypt(encrypted_username)
             tree.insert("", "end", values=(id, service, username, "********"))
 
     def page_passwords(self, root):
