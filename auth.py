@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import tkinter.messagebox as msg
 import generator
 import hashlib
-from hmac import compare_digest
+import hmac
 
 
 class Auth:
@@ -71,9 +71,18 @@ class Auth:
         code_hash = hashlib.sha256(code.encode()).hexdigest()
         return {"code": code, "code_hash": code_hash}
 
-    def verify_recovery_code(self, user_id, code):
+    def verify_recovery_code(self, user_id, input_code):
+        # case insensitive
+        input_hash = hashlib.sha256(input_code.strip().upper().encode()).hexdigest()
         code_hash = self.db.get_recovery_code(user_id)
-        return
+
+        if code_hash is None:
+            return False
+
+        if hmac.compare_digest(input_hash, code_hash):
+            return True
+        else:
+            return False
 
     def user_exists(self, username):
         return self.db.username_exists(username)

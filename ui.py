@@ -218,8 +218,44 @@ class GUI:
                 password = password_entry.get()
                 code = code_entry.get()
 
-                if code and username and password:
-                    pass
+                if all([code, username, password]):
+                    # check username
+                    if not self.auth.user_exists(username):
+                        tk.messagebox.showerror(
+                            t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD")
+                        )
+                        popup.destroy()
+                        return
+
+                    # check password
+                    result = self.auth.verify_master_password(username, password)
+                    if result is None:
+                        # account locked: warning already shown
+                        popup.destroy()
+                        return
+                    if result is False:
+                        tk.messagebox.showerror(
+                            t("DIALOG_ERROR"), t("MSG_WRONG_PASSWORD")
+                        )
+                        popup.destroy()
+                        return
+
+                    # no session is created; clear DEK from memory
+                    self.crypto.clear()
+
+                    # check recovery code
+                    if self.auth.verify_recovery_code(result["user_id"], code):
+                        self.db.disable_mfa(result["user_id"])
+                        self.db.update_recovery_code(
+                            result["user_id"], used=1, used_at=datetime.now()
+                        )
+                        msg.showinfo(t("DIALOG_2FA_STATUS"), t("MSG_2FA_DISABLED"))
+                        popup.destroy()
+                        return
+                    else:
+                        tk.messagebox.showerror(t("DIALOG_ERROR"), t("MSG_WRONG_CODE"))
+                        popup.destroy()
+                        return
                 else:
                     tk.messagebox.showerror(
                         t("DIALOG_ERROR"), t("MSG_ALL_FIELDS_REQUIRED")
@@ -351,6 +387,37 @@ class GUI:
         )
         btn_lang.pack(side="right", padx=20, pady=(0, 10))
 
+    def show_recovery_code(self, recovery_code):
+        def on_close():
+            popup.destroy()
+
+        popup = tk.Toplevel()
+        popup.configure(bg="#1A1D2E")
+        popup.title(t("LABEL_RECOVERY_CODE"))
+        self.center_window(popup, 300, 250)
+        self.theme.label(
+            popup,
+            t("LABEL_SHOW_RECOVERY_CODE"),
+            ("Segoe UI", 11),
+            justify="center",
+            wraplength=180,
+        ).pack(pady=(5, 5))
+        self.theme.label(popup, recovery_code, ("Segoe UI", 12, "bold")).pack(
+            pady=(10, 20)
+        )
+        self.theme.button(
+            popup,
+            on_close,
+            t("BTN_OK"),
+            font=("Segoe UI", 12, "bold"),
+            bg="#4F6EF7",
+            width=10,
+            height=1,
+        ).pack(pady=(10, 0))
+        popup.bind("<Return>", lambda e: on_close())
+        popup.focus_set()
+        popup.wait_window()
+
     def create_master_password(self, root):
         def on_ok(event=None):
             username = username_entry.get()
@@ -381,7 +448,7 @@ class GUI:
                         code = result["code"]
                         code_hash = result["code_hash"]
                         # only time showing recovery code
-                        print(code)
+                        self.show_recovery_code(code)
                         # save code_hash to database
                         self.db.set_recovery_code(user_id, code_hash)
                         # show QR code image
@@ -712,8 +779,10 @@ class GUI:
                     result = self.auth.create_recovery_code()
                     code = result["code"]
                     code_hash = result["code_hash"]
+
                     # only time showing recovery code
-                    print(code)
+                    self.show_recovery_code(code)
+
                     self.db.set_recovery_code(self.session.user_id, code_hash)
 
                     # create and set otp secret
@@ -882,7 +951,6 @@ class GUI:
             except Exception:
                 msg.showerror(t("DIALOG_ERROR"), "Failed to decrypt password")
                 return
-            # msg.showinfo(t("LABEL_PASSWORD"), real_password)
 
             popup = tk.Toplevel()
             popup.configure(bg="#1A1D2E")
