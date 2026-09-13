@@ -4,6 +4,7 @@ Desktop password manager written in Python/Tkinter. Built to actually learn appl
 
 ![Login page](https://github.com/maucasoli/password-manager/blob/main/docs/login.png "Login page")
 ![Password page](https://github.com/maucasoli/password-manager/blob/main/docs/password.png "Password page")
+> *Note: All credentials, QR codes, and recovery keys displayed are mock data generated strictly for demonstration purposes.*
 
 ## Security
 
