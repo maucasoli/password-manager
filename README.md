@@ -2,6 +2,9 @@
 
 Desktop password manager written in Python/Tkinter. Built to actually learn applied cryptography (KDFs, envelope encryption) — the crypto here is the same kind of design real vaults use.
 
+![Login page](https://github.com/maucasoli/password-manager/blob/main/docs/login.png "Login page")
+![Password page](https://github.com/maucasoli/password-manager/blob/main/docs/password.png "Password page")
+
 ## Security
 
 - **Master password never stored.** It's only used transiently to derive a key via **Argon2id**, combined with a random 256-bit salt.
